@@ -23,6 +23,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # Step 1: Restore dependencies across the entire solution
+      - name: Restore Solution
+        run: dotnet restore TestApplication/TestApplication.sln
+
+      # Step 2: Build all projects (Domain, Application, Infrastructure, API)
+      - name: Build Solution
+        run: dotnet build TestApplication/TestApplication.sln --configuration Release --no-restore
+
       - name: Restore
         run: dotnet restore ./TestApplication/TestApplication.API/TestApplication.API.csproj
 
