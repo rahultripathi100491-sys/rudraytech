@@ -1,0 +1,46 @@
+name: Build and Deploy .NET API to Somee
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore ./TestApplication.sln
+
+      - name: Build
+        run: dotnet build ./TestApplication.sln --configuration Release --no-restore
+
+      - name: Publish API
+        run: dotnet publish ./TestApplication.API/TestApplication.API.csproj --configuration Release --output ./publish --no-restore
+
+      - name: Show published files
+        shell: powershell
+        run: Get-ChildItem ./publish -Recurse
+
+      - name: Deploy to Somee
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./publish/
+          server-dir: ${{ secrets.FTP_PATH }}
