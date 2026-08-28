@@ -24,13 +24,13 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore ./WebApplication1.csproj
+        run: dotnet restore ./TestApplication/TestApplication.csproj
 
       - name: Build
-        run: dotnet build ./WebApplication1.csproj --configuration Release --no-restore
+        run: dotnet build ./TestApplication/TestApplication.csproj --configuration Release --no-restore
 
       - name: Publish API
-        run: dotnet publish ./WebApplication1.csproj --configuration Release --output ./publish --no-restore
+        run: dotnet publish ./TestApplication/TestApplication.csproj --configuration Release --output ./publish --no-restore
 
       - name: Show published files
         shell: powershell
