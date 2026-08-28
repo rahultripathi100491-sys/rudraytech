@@ -30,7 +30,7 @@ jobs:
         run: dotnet build ./WebApplication1.csproj --configuration Release --no-restore
 
       - name: Publish API
-        run: dotnet publish ./TestApplication.csproj --configuration Release --output ./publish --no-restore
+        run: dotnet publish ./WebApplication1.csproj --configuration Release --output ./publish --no-restore
 
       - name: Show published files
         shell: powershell
