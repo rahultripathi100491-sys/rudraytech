@@ -24,10 +24,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore ./TestApplication.API/TestApplication.sln
+        run: dotnet restore ./TestApplication.API/TestApplication.API.csproj
 
       - name: Build
-        run: dotnet build ./TestApplication.API/TestApplication.sln --configuration Release --no-restore
+        run: dotnet build ./TestApplication.API/TestApplication.API.csproj --configuration Release --no-restore
 
       - name: Publish API
         run: dotnet publish ./TestApplication.API/TestApplication.API.csproj --configuration Release --output ./publish --no-restore
