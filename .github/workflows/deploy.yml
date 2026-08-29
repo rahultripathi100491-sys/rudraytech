@@ -14,6 +14,10 @@ jobs:
     name: Build and Deploy
     runs-on: windows-latest
 
+    env:
+      # Maps your GitHub secret to .NET's ConnectionStrings:DevConnection configuration key
+      ConnectionStrings__DevConnection: ${{ secrets.DB_CONNECTION_STRING }}
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -23,19 +27,19 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      # Step 1: Restore dependencies across the entire solution
-      - name: Restore Solution
-        run: dotnet restore TestApplication/TestApplication.sln
-
-      # Step 2: Build all projects (Domain, Application, Infrastructure, API)
-      - name: Build Solution
-        run: dotnet build TestApplication/TestApplication.sln --configuration Release --no-restore
+      - name: Install EF Core CLI Tool
+        run: dotnet tool install --global dotnet-ef
 
       - name: Restore
         run: dotnet restore ./TestApplication/TestApplication.API/TestApplication.API.csproj
 
       - name: Build
         run: dotnet build ./TestApplication/TestApplication.API/TestApplication.API.csproj --configuration Release --no-restore
+
+      # Runs migrations where DbContext lives in Infrastructure and configuration/dependencies live in API
+      - name: Run EF Core Database Migrations
+        run: |
+          dotnet ef database update --project ./TestApplication/TestApplication.Infrastructure/TestApplication.Infrastructure.csproj --startup-project ./TestApplication/TestApplication.API/TestApplication.API.csproj --connection "${{ secrets.DB_CONNECTION_STRING }}"
 
       - name: Publish API
         run: dotnet publish ./TestApplication/TestApplication.API/TestApplication.API.csproj --configuration Release --output ./publish --no-restore
