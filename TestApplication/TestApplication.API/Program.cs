@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TestApplication.Application.Common.Command;
 using TestApplication.Application.Common.Handler;
+using TestApplication.Application.Common.Query;
 using TestApplication.Domain.Entity;
 using TestApplication.Infrastructure.AppDbContext;
 using TestApplication.Infrastructure.Interface;
@@ -37,8 +38,8 @@ builder.Services.AddTransient(
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 //builder.Services.AddTransient(typeof(IRequestHandler<GenericUpdateCommand<>, Unit>), typeof(GenericUpdateCommandHandler<>));
 //builder.Services.AddTransient(typeof(IRequestHandler<GenericDeleteCommand<>, Unit>), typeof(GenericDeleteCommandHandler<>));
-//builder.Services.AddTransient(typeof(IRequestHandler<GenericGetByIdQuery<>, >), typeof(GenericGetByIdQueryHandler<>));
-//builder.Services.AddTransient(typeof(IRequestHandler<GenericGetAllQuery<>, >), typeof(GenericGetAllQueryHandler<>));
+builder.Services.AddTransient(typeof(IRequestHandler<GenericGetByIdQuery<User>, User>), typeof(GenericGetByIdQueryHandler<User>));
+builder.Services.AddTransient(typeof(IRequestHandler<GenericGetAllQuery<User>, IReadOnlyList<User>>), typeof(GenericGetAllQueryHandler<User>));
 
 var app = builder.Build();
 
