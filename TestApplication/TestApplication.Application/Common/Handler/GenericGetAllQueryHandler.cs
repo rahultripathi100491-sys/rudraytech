@@ -5,7 +5,7 @@ using TestApplication.Infrastructure.Interface;
 
 namespace TestApplication.Application.Common.Handler
 {
-    public class GenericGetAllQueryHandler<T>:IRequestHandler<GenericGetAllQuery<T>, IReadOnlyList<T>> where T : class
+    public class GenericGetAllQueryHandler<T>:IRequestHandler<GenericGetAllQuery<T>, PaginatedResult<T>> where T : class
     {
         private readonly IGenericRepository<T> _repository;
 
@@ -14,9 +14,9 @@ namespace TestApplication.Application.Common.Handler
             _repository = repository;
         }
 
-        public async Task<IReadOnlyList<T>> Handle(GenericGetAllQuery<T> request, CancellationToken cancellationToken)
+        public async Task<PaginatedResult<T>> Handle(GenericGetAllQuery<T> request, CancellationToken cancellationToken)
         {
-            return await _repository.GetAllAsync();
+            return await _repository.GetAllAsync(request.Request, cancellationToken);
         }
     }
 }

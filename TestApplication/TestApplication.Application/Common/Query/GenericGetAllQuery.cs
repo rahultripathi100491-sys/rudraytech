@@ -3,5 +3,13 @@ using TestApplication.Domain.Entity;
 
 namespace TestApplication.Application.Common.Query
 {
-    public record GenericGetAllQuery<T>:IRequest<IReadOnlyList<T>> where T : class;
+    public class GenericGetAllQuery<T> :IRequest<PaginatedResult<T>> where T : class
+    {
+        public PaginationRequest Request { get; set; }
+
+        public GenericGetAllQuery(PaginationRequest request)
+        {
+            Request = request;
+        }
+    }
 }
