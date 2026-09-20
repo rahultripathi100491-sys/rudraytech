@@ -38,6 +38,8 @@ namespace TestApplication.Application.Common.Handler
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
+            //Set user Online
+            await _userRepository.SetUserOnLine(user);
             // 3. Generate token using TokenService
             var token = _tokenService.GenerateToken(user);
             var expiry = DateTime.UtcNow.AddMinutes(60);

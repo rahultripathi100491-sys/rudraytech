@@ -1,0 +1,15 @@
+<div class="chat-container">
+  <div class="messages">
+    <div *ngFor="let msg of chatService.activeMessages$ | async">
+      <strong>{{ msg.senderUserId }}:</strong> {{ msg.content }}
+    </div>
+  </div>
+  <div class="input-box">
+    <input 
+      [(ngModel)]="newMessage" 
+      (keyup.enter)="send()"
+      placeholder="Type a message..." 
+    />
+    <button (click)="send()">Send</button>
+  </div>
+</div>

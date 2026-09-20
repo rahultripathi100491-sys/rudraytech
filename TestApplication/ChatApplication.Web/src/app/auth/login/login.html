@@ -1,0 +1,107 @@
+<div class="login-page">
+
+  <div class="login-card">
+
+    <div class="login-header">
+      <div class="logo">💬</div>
+
+      <h1>Welcome Back</h1>
+
+      <p>Sign in to continue to ChatApplication</p>
+    </div>
+
+
+    <form (ngSubmit)="login()">
+
+      <!-- Email -->
+
+      <div class="form-group">
+
+        <label for="email">
+          Email Address
+        </label>
+
+        <input
+          id="email"
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          placeholder="Enter your email"
+          autocomplete="email"
+          required
+        />
+
+      </div>
+
+
+      <!-- Password -->
+
+      <div class="form-group">
+
+        <label for="password">
+          Password
+        </label>
+
+        <input
+          id="password"
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        />
+
+      </div>
+
+
+      <!-- Options -->
+
+      <div class="login-options">
+
+        <label class="remember">
+
+          <input
+            type="checkbox"
+            name="rememberMe"
+            [(ngModel)]="rememberMe"
+          />
+
+          <span>Remember me</span>
+
+        </label>
+
+        <a href="javascript:void(0)">
+          Forgot Password?
+        </a>
+
+      </div>
+
+
+      <!-- Login -->
+
+      <button
+        type="submit"
+        class="login-button"
+      >
+        Login
+      </button>
+
+
+      <!-- Register -->
+
+      <div class="register-text">
+
+        Don't have an account?
+
+        <a routerLink="../register">
+          Create Account
+        </a>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
