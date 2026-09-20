@@ -19,5 +19,13 @@ namespace TestApplication.Infrastructure.Repository
             return await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         }
+
+        public async Task<User?> SetUserOnLine(User user, CancellationToken cancellationToken = default)
+        {
+            user.IsOnLine = true;
+
+            await _context.SaveChangesAsync();
+            return user;
+        }
     }
 }

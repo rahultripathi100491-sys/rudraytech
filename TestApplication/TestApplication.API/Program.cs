@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using TestApplication.API.Hubs;
 using TestApplication.Application.Common.Command;
 using TestApplication.Application.Common.Handler;
 using TestApplication.Application.Common.Query;
@@ -63,6 +64,8 @@ var connectionString = builder.Environment.IsDevelopment() ? builder.Configurati
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+builder.Services.AddSignalR();
+
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
 // Register MediatR assembly from Application layer
@@ -114,6 +117,17 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 // Register TokenService in Dependency Injection container
 builder.Services.AddScoped<ITokenService, TokenService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngular", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Required for SignalR WebSocket connections
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -123,6 +137,8 @@ var app = builder.Build();
     app.UseSwaggerUI();
 //}
 
+app.UseCors("AllowAngular");
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
@@ -130,5 +146,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();

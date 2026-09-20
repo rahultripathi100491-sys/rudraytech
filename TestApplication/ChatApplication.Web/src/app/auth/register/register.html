@@ -1,0 +1,159 @@
+<div class="register-page">
+
+  <div class="register-card">
+
+    <div class="register-header">
+
+      <div class="logo">
+        💬
+      </div>
+
+      <h1>Create Account</h1>
+
+      <p>
+        Create your account to start chatting
+      </p>
+
+    </div>
+
+
+    <form (ngSubmit)="register()">
+
+      <!-- User Name -->
+
+      <div class="form-group">
+
+        <label for="userName">
+          User Name
+        </label>
+
+        <input
+          id="userName"
+          type="text"
+          name="userName"
+          [(ngModel)]="userName"
+          placeholder="Enter your name"
+          autocomplete="name"
+          required
+        />
+
+      </div>
+
+
+      <!-- Email -->
+
+      <div class="form-group">
+
+        <label for="email">
+          Email Address
+        </label>
+
+        <input
+          id="email"
+          type="email"
+          name="email"
+          [(ngModel)]="email"
+          placeholder="Enter your email"
+          autocomplete="email"
+          required
+        />
+
+      </div>
+
+
+      <!-- Password -->
+
+      <div class="form-group">
+
+        <label for="password">
+          Password
+        </label>
+
+        <input
+          id="password"
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Create a password"
+          autocomplete="new-password"
+          required
+        />
+
+      </div>
+
+
+      <!-- Confirm Password -->
+
+      <div class="form-group">
+
+        <label for="confirmPassword">
+          Confirm Password
+        </label>
+
+        <input
+          id="confirmPassword"
+          type="password"
+          name="confirmPassword"
+          [(ngModel)]="confirmPassword"
+          placeholder="Confirm your password"
+          autocomplete="new-password"
+          required
+        />
+
+      </div>
+
+
+      <!-- Terms -->
+
+      <div class="terms">
+
+        <label>
+
+          <input
+            type="checkbox"
+            name="acceptTerms"
+            [(ngModel)]="acceptTerms"
+          />
+
+          <span>
+            I agree to the
+            <a href="javascript:void(0)">
+              Terms & Conditions
+            </a>
+          </span>
+
+        </label>
+
+      </div>
+
+
+      <!-- Register -->
+
+      <button
+        type="submit"
+        class="register-button"
+      >
+        Create Account
+      </button>
+
+
+      <!-- Login -->
+
+      <div class="login-text">
+
+        Already have an account?
+
+        <a
+          href="javascript:void(0)"
+          (click)="goToLogin()"
+        >
+          Login
+        </a>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
