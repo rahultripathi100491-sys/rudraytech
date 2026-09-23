@@ -19,7 +19,7 @@ export interface AuthResponse {
 })
 export class AuthService {
   private http = inject(HttpClient);
-  private readonly apiUrl = 'https://localhost:7072/api/Auth'; // Match your ASP.NET Core port
+  private readonly apiUrl = 'http://testapplication.somee.com/api/Auth'; // Match your ASP.NET Core port
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(

@@ -11,7 +11,7 @@ export class ChatService {
   private http = inject(HttpClient);
   private signalRService = inject(SignalRService);
 
-  private readonly apiUrl = 'https://localhost:7072/api/messages';
+  private readonly apiUrl = 'http://testapplication.somee.com/api/messages';
 
   private activeMessagesSubject = new BehaviorSubject<ChatMessage[]>([]);
   public activeMessages$ = this.activeMessagesSubject.asObservable();
