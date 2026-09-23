@@ -137,7 +137,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("https://rudraytech.lovestoblog.com/")
+        policy.WithOrigins(
+                    "https://rudraytech.lovestoblog.com", // Your hosted frontend domain
+                    "http://localhost:4200"              // Local development domain
+               )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Required for SignalR WebSocket connections

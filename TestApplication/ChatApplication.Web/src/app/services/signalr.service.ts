@@ -31,7 +31,7 @@ export class SignalRService {
     }
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('http://testapplication.somee.com/chatHub', {
+      .withUrl('https://testapplication.somee.com/chatHub', {
         accessTokenFactory: () => jwtToken
       })
       .withAutomaticReconnect()
