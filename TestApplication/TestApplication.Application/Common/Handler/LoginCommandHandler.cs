@@ -6,7 +6,7 @@ using TestApplication.Infrastructure.Interface;
 
 namespace TestApplication.Application.Common.Handler
 {
-    public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto>
+    public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     {
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher<User> _passwordHasher;
@@ -19,7 +19,7 @@ namespace TestApplication.Application.Common.Handler
             _tokenService = tokenService;
         }
 
-        public async Task<AuthResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
+        public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
@@ -41,10 +41,16 @@ namespace TestApplication.Application.Common.Handler
             //Set user Online
             await _userRepository.SetUserOnLine(user);
             // 3. Generate token using TokenService
-            var token = _tokenService.GenerateToken(user);
-            var expiry = DateTime.UtcNow.AddMinutes(60);
+            //var token = _tokenService.GenerateToken(user);
+            //var expiry = DateTime.UtcNow.AddMinutes(60);
+            var loginResponse = new LoginResponse();
+            loginResponse.UserId = user.Id;
+            loginResponse.UserName = user.FirstName + " " + user.LastName;
+            loginResponse.Email = user.Email;
+            loginResponse.Token = _tokenService.GenerateToken(user);
+            loginResponse.Expiry = DateTime.UtcNow.AddMinutes(60);
 
-            return new AuthResponseDto(token, expiry);
+            return loginResponse;
         }
         private bool VerifyPassword(string inputPassword, string storedHash)
         {

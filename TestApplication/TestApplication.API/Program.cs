@@ -100,11 +100,26 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:Secret"]!))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            // Extracts token from query string when connecting to /chatHub
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/chatHub", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 // 2. Explicitly register open generic handlers for MediatR
-builder.Services.AddTransient(
-    typeof(IRequestHandler<GenericCreateCommand<User>, User>),
-    typeof(GenericCreateCommandHandler<User>)
+builder.Services.AddScoped(typeof(IRequestHandler<GenericCreateCommand<User>, User>), typeof(GenericCreateCommandHandler<User>)
 );
 //builder.Services.AddTransient(typeof(IRequestHandler<GenericCreateCommand<User>, object>), typeof(GenericCreateCommandHandler<>));
 // Register PasswordHasher for your User entity
@@ -116,6 +131,7 @@ builder.Services.AddTransient(typeof(IRequestHandler<GenericGetAllQuery<User>, P
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 // Register TokenService in Dependency Injection container
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 
 builder.Services.AddCors(options =>
 {

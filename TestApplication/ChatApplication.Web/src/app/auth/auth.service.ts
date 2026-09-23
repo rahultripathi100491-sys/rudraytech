@@ -10,6 +10,7 @@ export interface LoginRequest {
 export interface AuthResponse {
   token: string;
   userId?: string;
+  userName?: string;
   email?: string;
 }
 
@@ -24,8 +25,18 @@ export class AuthService {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap((response) => {
         if (response?.token) {
-          localStorage.setItem('Token', response.token);
+          localStorage.setItem('token', response.token);
         }
+        if(response.userId){
+          localStorage.setItem('userId', response.userId);
+        }
+        if (response.userName) {
+            localStorage.setItem('userName', response.userName);
+          }
+
+          if (response.email) {
+            localStorage.setItem('email', response.email);
+          }
       })
     );
   }
