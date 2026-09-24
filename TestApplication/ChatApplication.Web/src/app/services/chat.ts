@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { SignalRService } from './signalr.service';
 import { ChatMessage, Conversation } from '../models/chat-message';
+import { BASE_URL } from '../app.config';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,8 @@ export class ChatService {
   private http = inject(HttpClient);
   private signalRService = inject(SignalRService);
 
-  private readonly apiUrl = 'https://testapplication.somee.com/api/messages';
+  private readonly apiUrl = `${BASE_URL}/messages`;
+  //private readonly apiUrl = 'https://testapplication.somee.com/api/messages';
 
   private activeMessagesSubject = new BehaviorSubject<ChatMessage[]>([]);
   public activeMessages$ = this.activeMessagesSubject.asObservable();
@@ -102,4 +104,16 @@ export class ChatService {
       }
     }
   }
+
+  // Inside ChatService class:
+  public searchUsers(query: string): Observable<UserSearchResult[]> {
+    return this.http.get<UserSearchResult[]>(`${BASE_URL}/user/SearchUsers/search?q=${query}`);
+  }
+}
+
+// Add this interface to your models or at the top of the file
+export interface UserSearchResult {
+  id: string;
+  name: string;
+  email: string;
 }

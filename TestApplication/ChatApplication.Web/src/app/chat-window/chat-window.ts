@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
-import { ChatService } from '../services/chat';
+import { ChatService, UserSearchResult } from '../services/chat';
 import { ChatMessage, Conversation } from '../models/chat-message';
 
 @Component({
@@ -23,6 +23,9 @@ import { ChatMessage, Conversation } from '../models/chat-message';
 export class ChatWindowComponent implements OnInit {
 
   protected chatService = inject(ChatService);
+  public showNewChatModal = false;
+  public searchQuery = '';
+  public searchResults: UserSearchResult[] = [];
 
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
 
@@ -45,6 +48,26 @@ export class ChatWindowComponent implements OnInit {
 
   ngAfterViewChecked(): void {
     this.scrollToBottom();
+  }
+
+  public openNewChatModal(): void {
+    this.showNewChatModal = true;
+    this.searchQuery = '';
+    this.searchResults = [];
+  }
+
+  public closeNewChatModal(): void {
+    this.showNewChatModal = false;
+  }
+
+  public onSearchUsers(): void {
+    if (!this.searchQuery.trim()) {
+      this.searchResults = [];
+      return;
+    }this.chatService.searchUsers(this.searchQuery).subscribe({
+      next: (results) => (this.searchResults = results),
+      error: (err) => console.error('Failed to search users:', err)
+    });
   }
 
   /**
@@ -100,5 +123,21 @@ export class ChatWindowComponent implements OnInit {
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
+  }
+  // Action to start or select a conversation
+  public startConversation(targetUserId: string, targetName: string): void {
+    this.activeTargetUserId = targetUserId;
+    this.activeTargetName = targetName;
+    this.chatService.loadConversationHistory(targetUserId);
+  }
+  public selectUserAndStartChat(user: UserSearchResult): void {
+    this.activeTargetUserId = user.id;
+    this.activeTargetName = user.name;
+
+    // 1. Close search UI
+    this.closeNewChatModal();
+
+    // 2. Load existing history (returns [] if new user)
+    this.chatService.loadConversationHistory(user.id);
   }
 }
