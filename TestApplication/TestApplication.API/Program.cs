@@ -132,6 +132,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 // Register TokenService in Dependency Injection container
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 
 builder.Services.AddCors(options =>
 {
