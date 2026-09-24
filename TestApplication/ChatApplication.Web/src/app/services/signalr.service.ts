@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { Subject, Observable } from 'rxjs';
 import { ChatMessage } from '../models/chat-message';
+import { HUB_URL } from '../app.config';
 
 @Injectable({
   providedIn: 'root'
@@ -30,13 +31,19 @@ export class SignalRService {
       return this.connectionPromise;
     }
 
+    // this.hubConnection = new signalR.HubConnectionBuilder()
+    //   .withUrl('https://testapplication.somee.com/chatHub', {
+    //     accessTokenFactory: () => jwtToken
+    //   })
+    //   .withAutomaticReconnect()
+    //   .configureLogging(signalR.LogLevel.Information)
+    //   .build();
+
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl('https://testapplication.somee.com/chatHub', {
+      .withUrl(`${HUB_URL}/chatHub`, {
         accessTokenFactory: () => jwtToken
-      })
-      .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
+    })
+  .build();
 
     this.registerSignalRListeners();
 

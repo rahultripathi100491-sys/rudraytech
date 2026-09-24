@@ -20,6 +20,23 @@ namespace TestApplication.Infrastructure.Repository
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         }
 
+        public async Task<List<User>> SearchUsersAsync(string searchTerm, Guid currentUserId, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return new List<User>();
+            }
+
+            var term = searchTerm.Trim().ToLower();
+
+            return await _context.Users
+                .AsNoTracking()
+                .Where(u => u.Id != currentUserId &&
+                           (u.FirstName!.ToLower().Contains(term) || u.LastName!.ToLower().Contains(term) || u.Email!.ToLower().Contains(term)))
+                .Take(10)
+                .ToListAsync(cancellationToken);
+        }
+
         public async Task<User?> SetUserOnLine(User user, CancellationToken cancellationToken = default)
         {
             user.IsOnLine = true;

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TestApplication.Application.Common.Command;
 using TestApplication.Application.Common.Query;
 using TestApplication.Domain.Entity;
@@ -49,6 +50,25 @@ namespace TestApplication.API.Controllers
         {
             await _mediator.Send(new GenericUpdateCommand<User>(user));
             return Ok();
+        }
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string q, CancellationToken cancellationToken)
+        {
+            var currentUserIdClaim =
+                User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(currentUserIdClaim, out var currentUserId))
+            {
+                return Unauthorized(new
+                {
+                    message = "Invalid user identity."
+                });
+            }
+
+            var query = new SearchUsersQuery(q, currentUserId);
+            var result = await _mediator.Send(query, cancellationToken);
+
+            return Ok(result);
         }
     }
 }

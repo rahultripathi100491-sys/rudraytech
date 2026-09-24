@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { BASE_URL } from '../app.config';
 
 export interface LoginRequest {
   email?: string;
@@ -19,10 +20,11 @@ export interface AuthResponse {
 })
 export class AuthService {
   private http = inject(HttpClient);
+  private readonly authUrl = `${BASE_URL}/Auth`;
   private readonly apiUrl = 'https://testapplication.somee.com/api/Auth'; // Match your ASP.NET Core port
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
+    return this.http.post<AuthResponse>(`${this.authUrl}/login`, credentials).pipe(
       tap((response) => {
         if (response?.token) {
           localStorage.setItem('token', response.token);
