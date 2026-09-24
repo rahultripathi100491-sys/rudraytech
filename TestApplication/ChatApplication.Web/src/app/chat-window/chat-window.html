@@ -1,40 +1,38 @@
 <div class="chat-container">
   <aside class="chat-sidebar">
-    <div class="sidebar-header">
-    <h2>Conversations</h2>
-    <!-- Button to trigger New Chat modal -->
-    <button class="new-chat-btn" (click)="openNewChatModal()">+ New Chat</button>
-  </div>
-
-  <!-- Search Overlay / Modal for starting brand new chats -->
-  @if (showNewChatModal) {
-    <div class="new-chat-search-box">
-      <input 
-        type="text" 
-        [(ngModel)]="searchQuery" 
-        (input)="onSearchUsers()" 
-        placeholder="Search user by name or email..." 
-        autoFocus />
-      
-      <div class="search-results-list">
-        @for (user of searchResults; track user.id) {
-          <div class="search-user-item" (click)="selectUserAndStartChat(user)">
-            <span class="user-name">{{ user.name }}</span>
-            <span class="user-email">{{ user.email }}</span>
-          </div>
-        } @empty {
-          @if (searchQuery.length > 0) {
-            <p class="no-results">No users found</p>
-          }
-        }
-      </div>
-      <button class="close-btn" (click)="closeNewChatModal()">Cancel</button>
-    </div>
-  }
+    <!-- Sidebar header with Conversations + New Chat -->
     <div class="sidebar-header">
       <h2>Conversations</h2>
+      <button class="new-chat-btn" (click)="openNewChatModal()">+ New Chat</button>
     </div>
 
+    <!-- Search box (inline, toggled by + New Chat) -->
+    @if (showNewChatModal) {
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchQuery" 
+          (input)="onSearchUsers()" 
+          placeholder="Search user by name or email..." 
+          autofocus />
+
+        <div class="search-results-list">
+          @for (user of searchResults; track user.id) {
+            <div class="search-user-item" (click)="selectUserAndStartChat(user)">
+              <span class="user-name">{{ user.name }}</span>
+              <span class="user-email">{{ user.email }}</span>
+            </div>
+          } @empty {
+            @if (searchQuery.length > 0) {
+              <p class="no-results">No users found</p>
+            }
+          }
+        </div>
+        <button class="close-btn" (click)="closeNewChatModal()">Cancel</button>
+      </div>
+    }
+
+    <!-- Conversation list -->
     <div class="conversation-list">
       @if (conversations$ | async; as conversations) {
         @for (conv of conversations; track conv.id) {
@@ -64,6 +62,7 @@
     </div>
   </aside>
 
+  <!-- Chat window -->
   <main class="chat-window">
     @if (activeTargetUserId) {
       <header class="chat-header">

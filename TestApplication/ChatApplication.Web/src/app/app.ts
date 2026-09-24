@@ -1,10 +1,11 @@
 import { Component, signal, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SignalRService } from './services/signalr.service';
+import { Header } from './header/header';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, Header],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

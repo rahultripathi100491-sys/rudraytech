@@ -44,10 +44,17 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem('Token');
+    return localStorage.getItem('token');
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
   }
 
   logout(): void {
-    localStorage.removeItem('Token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('email');
   }
 }

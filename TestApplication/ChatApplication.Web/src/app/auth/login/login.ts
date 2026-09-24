@@ -48,7 +48,7 @@ export class LoginComponent {
           this.signalRService.startConnection(response.token);
         }
         // Navigate to Chat page
-        this.router.navigate(['/chat']);
+        this.router.navigate(['/post']);
       },
       error: (err) => {
         this.isLoading = false;
