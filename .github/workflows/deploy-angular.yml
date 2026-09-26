@@ -1,4 +1,4 @@
-name: Deploy Static Website
+name: Deploy Angular Production
 
 on:
   push:
@@ -8,14 +8,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
-    steps:
+    defaults:
+      run:
+        working-directory: ./ChatApplication.Web
 
+    steps:
+      # 1. Checkout repository
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 2. Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ./ChatApplication.Web/package-lock.json
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build Angular in Production mode
+      - name: Build Production
+        run: npm run build -- --configuration production
+
+      # 5. Deploy ONLY production files to InfinityFree
       - name: Deploy to InfinityFree
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -24,5 +45,9 @@ jobs:
           password: ${{ secrets.INFINITY_FTP_PASSWORD }}
           protocol: ftp
           port: 21
-          local-dir: ./
+
+          # Angular production output
+          local-dir: ./ChatApplication.Web/dist/ChatApplication.Web/browser/
+
+          # InfinityFree public folder
           server-dir: /htdocs/
