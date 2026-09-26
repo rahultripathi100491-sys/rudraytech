@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
-import * as signalR from '@microsoft/signalr';
+
+import * as signalR
+  from '@microsoft/signalr';
+
 import { BehaviorSubject } from 'rxjs';
-import { BASE_URL, HUB_URL } from '../app.config';
+
+import {
+  HUB_URL
+} from '../app.config';
 
 @Injectable({
   providedIn: 'root'
@@ -12,79 +18,93 @@ export class CallService {
   // SIGNALR
   // =========================================================
 
-  private connection: signalR.HubConnection;
-  
-  private readonly apiUrl = `${HUB_URL}/chatHub`;
+  private connection:
+    signalR.HubConnection;
+
+  private readonly apiUrl =
+    `${HUB_URL}/chatHub`;
+
 
   // =========================================================
   // WEBRTC
   // =========================================================
 
-  private peerConnection: RTCPeerConnection | null = null;
+  private peerConnection:
+    RTCPeerConnection | null = null;
 
-  private localStream: MediaStream | null = null;
+  private localStream:
+    MediaStream | null = null;
 
-  private ringtone: HTMLAudioElement | null = null;
+  private ringtone:
+    HTMLAudioElement | null = null;
 
-  private pendingIceCandidates: RTCIceCandidateInit[] = [];
+  private pendingIceCandidates:
+    RTCIceCandidateInit[] = [];
+
 
   // =========================================================
-  // ACTIVE CALL USER
+  // ACTIVE CALL
   // =========================================================
 
-  /**
-   * The user on the other side of the current call.
-   *
-   * This is important because incomingCall$ becomes null
-   * after the call is accepted.
-   */
-  private activeCallUserId: string | null = null;
+  private activeCallUserId:
+    string | null = null;
+
 
   // =========================================================
   // OBSERVABLES
   // =========================================================
 
   /**
-   * Caller user ID.
-   *
-   * Initial value is null because no call exists.
+   * Incoming caller ID
    */
   public incomingCall$ =
     new BehaviorSubject<string | null>(null);
 
+
   /**
-   * Caller full name.
-   *
-   * Example:
-   *
-   * Rahul Tripathi
+   * Incoming caller name
    */
   public incomingCallName$ =
     new BehaviorSubject<string>('');
 
+
   /**
-   * Emits when receiver accepts the call.
+   * True while video call UI is active
+   */
+  public isCallActive$ =
+    new BehaviorSubject<boolean>(false);
+
+
+  /**
+   * Call accepted
    */
   public callAccepted$ =
     new BehaviorSubject<string | null>(null);
 
+
   /**
-   * Emits when receiver rejects the call.
+   * Call rejected
    */
   public callRejected$ =
     new BehaviorSubject<string | null>(null);
 
+
   /**
-   * Emits when remote user ends the call.
+   * Call ended
    */
   public callEnded$ =
     new BehaviorSubject<string | null>(null);
 
-  public typingUserId$ =
-  new BehaviorSubject<string | null>(null);
 
-public isTyping$ =
-  new BehaviorSubject<boolean>(false);
+  /**
+   * Typing state
+   */
+  public typingUserId$ =
+    new BehaviorSubject<string | null>(null);
+
+
+  public isTyping$ =
+    new BehaviorSubject<boolean>(false);
 
 
   // =========================================================
@@ -109,7 +129,7 @@ public isTyping$ =
         .build();
 
 
-    // Register handlers BEFORE starting connection
+    // Register handlers BEFORE connection
     this.registerSignalRHandlers();
 
 
@@ -119,10 +139,11 @@ public isTyping$ =
 
 
   // =========================================================
-  // START SIGNALR
+  // START CONNECTION
   // =========================================================
 
-  private async startConnection(): Promise<void> {
+  private async startConnection():
+    Promise<void> {
 
     try {
 
@@ -136,7 +157,6 @@ public isTyping$ =
         console.log(
           '✅ Call SignalR connected'
         );
-
       }
 
     } catch (error) {
@@ -146,15 +166,18 @@ public isTyping$ =
         error
       );
 
+
       setTimeout(() => {
+
         this.startConnection();
+
       }, 5000);
     }
   }
 
 
   // =========================================================
-  // SAFE SIGNALR INVOKE
+  // SAFE INVOKE
   // =========================================================
 
   private async safeInvoke(
@@ -174,6 +197,7 @@ public isTyping$ =
       await this.startConnection();
     }
 
+
     if (
       this.connection.state !==
       signalR.HubConnectionState.Connected
@@ -183,6 +207,7 @@ public isTyping$ =
         'Call SignalR connection is not ready.'
       );
     }
+
 
     return this.connection.invoke(
       method,
@@ -195,32 +220,45 @@ public isTyping$ =
   // GET MEDIA
   // =========================================================
 
-  private async getMediaStream(): Promise<MediaStream> {
+  private async getMediaStream():
+    Promise<MediaStream> {
 
-    const audioConstraints: MediaTrackConstraints = {
+    const audioConstraints:
+      MediaTrackConstraints = {
 
-      echoCancellation: true,
+        echoCancellation: true,
 
-      noiseSuppression: true,
+        noiseSuppression: true,
 
-      autoGainControl: true
+        autoGainControl: true
+      };
 
-    };
 
+    // -------------------------------------------------------
+    // VIDEO + AUDIO
+    // -------------------------------------------------------
 
     try {
 
       const stream =
-        await navigator.mediaDevices.getUserMedia({
+        await navigator.mediaDevices
+          .getUserMedia({
 
-          audio: audioConstraints,
+            audio: audioConstraints,
 
-          video: {
-            width: 1280,
-            height: 720
-          }
+            video: {
+              width: {
+                ideal: 1280
+              },
 
-        });
+              height: {
+                ideal: 720
+              },
+
+              facingMode: 'user'
+            }
+
+          });
 
 
       stream
@@ -230,6 +268,20 @@ public isTyping$ =
           track.enabled = true;
 
         });
+
+
+      stream
+        .getVideoTracks()
+        .forEach(track => {
+
+          track.enabled = true;
+
+        });
+
+
+      console.log(
+        '🎥 Camera + microphone enabled'
+      );
 
 
       return stream;
@@ -242,14 +294,19 @@ public isTyping$ =
       );
 
 
+      // -----------------------------------------------------
+      // AUDIO ONLY
+      // -----------------------------------------------------
+
       const stream =
-        await navigator.mediaDevices.getUserMedia({
+        await navigator.mediaDevices
+          .getUserMedia({
 
-          audio: audioConstraints,
+            audio: audioConstraints,
 
-          video: false
+            video: false
 
-        });
+          });
 
 
       stream
@@ -279,6 +336,18 @@ public isTyping$ =
       targetUserId
     );
 
+
+    // If old connection exists
+    if (this.peerConnection) {
+
+      this.cleanupWebRTC();
+
+    }
+
+
+    // -------------------------------------------------------
+    // CREATE RTCPeerConnection
+    // -------------------------------------------------------
 
     this.peerConnection =
       new RTCPeerConnection({
@@ -315,6 +384,80 @@ public isTyping$ =
       });
 
 
+    // -------------------------------------------------------
+    // CONNECTION STATE
+    // -------------------------------------------------------
+
+    this.peerConnection.onconnectionstatechange =
+      () => {
+
+        if (!this.peerConnection) {
+          return;
+        }
+
+        console.log(
+          'WebRTC connection state:',
+          this.peerConnection.connectionState
+        );
+
+
+        if (
+          this.peerConnection.connectionState ===
+          'connected'
+        ) {
+
+          console.log(
+            '✅ WebRTC connected'
+          );
+
+          this.isCallActive$.next(true);
+        }
+
+
+        if (
+          this.peerConnection.connectionState ===
+          'failed'
+        ) {
+
+          console.error(
+            '❌ WebRTC connection failed'
+          );
+
+        }
+
+
+        if (
+          this.peerConnection.connectionState ===
+          'disconnected'
+        ) {
+
+          console.warn(
+            '⚠️ WebRTC disconnected'
+          );
+
+        }
+      };
+
+
+    // -------------------------------------------------------
+    // ICE CONNECTION STATE
+    // -------------------------------------------------------
+
+    this.peerConnection.oniceconnectionstatechange =
+      () => {
+
+        if (!this.peerConnection) {
+          return;
+        }
+
+        console.log(
+          'ICE state:',
+          this.peerConnection.iceConnectionState
+        );
+
+      };
+
+
     // =======================================================
     // LOCAL MEDIA
     // =======================================================
@@ -323,9 +466,16 @@ public isTyping$ =
       await this.getMediaStream();
 
 
+    // Add every local track
     this.localStream
       .getTracks()
       .forEach(track => {
+
+        console.log(
+          'Adding local track:',
+          track.kind
+        );
+
 
         this.peerConnection!
           .addTrack(
@@ -336,6 +486,7 @@ public isTyping$ =
       });
 
 
+    // Attach own video
     this.attachLocalVideo();
 
 
@@ -347,27 +498,29 @@ public isTyping$ =
       async (event) => {
 
         console.log(
-          '🎥 Remote track received'
+          '🎥 Remote track received:',
+          event.track.kind
         );
 
 
         const remoteVideo =
           document.getElementById(
             'remoteVideo'
-          ) as HTMLVideoElement;
+          ) as HTMLVideoElement | null;
 
 
         if (!remoteVideo) {
 
           console.warn(
-            'remoteVideo element not found'
+            '❌ remoteVideo element not found'
           );
 
           return;
         }
 
 
-        let remoteStream: MediaStream;
+        let remoteStream:
+          MediaStream;
 
 
         if (
@@ -381,15 +534,23 @@ public isTyping$ =
         } else {
 
           remoteStream =
-            new MediaStream([
-              event.track
-            ]);
+            remoteVideo.srcObject as
+            MediaStream ||
+            new MediaStream();
 
+          remoteStream.addTrack(
+            event.track
+          );
         }
 
 
         remoteVideo.srcObject =
           remoteStream;
+
+
+        remoteVideo.autoplay = true;
+
+        remoteVideo.playsInline = true;
 
         remoteVideo.muted = false;
 
@@ -400,6 +561,10 @@ public isTyping$ =
 
           await remoteVideo.play();
 
+          console.log(
+            '▶️ Remote video playing'
+          );
+
         } catch (error) {
 
           console.warn(
@@ -408,7 +573,6 @@ public isTyping$ =
           );
 
         }
-
       };
 
 
@@ -428,7 +592,9 @@ public isTyping$ =
 
           await this.safeInvoke(
             'SendIceCandidate',
+
             targetUserId,
+
             JSON.stringify(
               event.candidate
             )
@@ -442,7 +608,6 @@ public isTyping$ =
           );
 
         }
-
       };
   }
 
@@ -456,13 +621,13 @@ public isTyping$ =
     const localVideo =
       document.getElementById(
         'localVideo'
-      ) as HTMLVideoElement;
+      ) as HTMLVideoElement | null;
 
 
     if (!localVideo) {
 
       console.warn(
-        'localVideo element not found yet.'
+        '❌ localVideo element not found'
       );
 
       return;
@@ -479,8 +644,19 @@ public isTyping$ =
 
     localVideo.muted = true;
 
+    localVideo.autoplay = true;
+
+    localVideo.playsInline = true;
+
 
     localVideo.play()
+      .then(() => {
+
+        console.log(
+          '▶️ Local video playing'
+        );
+
+      })
       .catch(error => {
 
         console.warn(
@@ -493,10 +669,11 @@ public isTyping$ =
 
 
   // =========================================================
-  // PROCESS QUEUED ICE
+  // PROCESS PENDING ICE
   // =========================================================
 
-  private async processPendingIceCandidates(): Promise<void> {
+  private async processPendingIceCandidates():
+    Promise<void> {
 
     if (
       !this.peerConnection ||
@@ -553,6 +730,7 @@ public isTyping$ =
 
     this.connection.on(
       'IncomingCall',
+
       (
         fromUserId: string,
         firstName: string,
@@ -590,7 +768,7 @@ public isTyping$ =
         if (!fromUserId) {
 
           console.error(
-            '❌ IncomingCall received without caller ID'
+            '❌ IncomingCall without caller ID'
           );
 
           return;
@@ -602,12 +780,12 @@ public isTyping$ =
             .trim();
 
 
-        // Store caller ID
+        // Caller ID
         this.incomingCall$
           .next(fromUserId);
 
 
-        // Store caller full name
+        // Caller name
         this.incomingCallName$
           .next(
             callerName ||
@@ -615,7 +793,7 @@ public isTyping$ =
           );
 
 
-        // Remember active call user
+        // Remember caller
         this.activeCallUserId =
           fromUserId;
 
@@ -633,6 +811,7 @@ public isTyping$ =
 
     this.connection.on(
       'ReceiveOffer',
+
       async (
         fromUserId: string,
         sdpOffer: string
@@ -650,6 +829,11 @@ public isTyping$ =
             fromUserId;
 
 
+          // Make video UI visible
+          this.isCallActive$
+            .next(true);
+
+
           // Create peer connection
           await this.createPeerConnection(
             fromUserId
@@ -660,9 +844,16 @@ public isTyping$ =
           await this.peerConnection!
             .setRemoteDescription(
               new RTCSessionDescription(
-                JSON.parse(sdpOffer)
+                JSON.parse(
+                  sdpOffer
+                )
               )
             );
+
+
+          console.log(
+            '✅ Remote offer set'
+          );
 
 
           // Process queued ICE
@@ -672,7 +863,13 @@ public isTyping$ =
           // Create answer
           const answer =
             await this.peerConnection!
-              .createAnswer();
+              .createAnswer({
+
+                offerToReceiveAudio: true,
+
+                offerToReceiveVideo: true
+
+              });
 
 
           // Set local description
@@ -682,15 +879,30 @@ public isTyping$ =
             );
 
 
+          console.log(
+            '✅ Answer created'
+          );
+
+
           // Send answer
           await this.safeInvoke(
             'SendAnswer',
+
             fromUserId,
-            JSON.stringify(answer)
+
+            JSON.stringify(
+              answer
+            )
+          );
+
+
+          console.log(
+            '✅ Answer sent'
           );
 
 
           this.stopRingtone();
+
 
         } catch (error) {
 
@@ -698,6 +910,10 @@ public isTyping$ =
             '❌ Failed to process offer:',
             error
           );
+
+
+          this.isCallActive$
+            .next(false);
 
         }
       }
@@ -710,6 +926,7 @@ public isTyping$ =
 
     this.connection.on(
       'ReceiveAnswer',
+
       async (
         fromUserId: string,
         sdpAnswer: string
@@ -724,6 +941,11 @@ public isTyping$ =
         try {
 
           if (!this.peerConnection) {
+
+            console.warn(
+              'No peer connection for answer'
+            );
+
             return;
           }
 
@@ -731,12 +953,20 @@ public isTyping$ =
           await this.peerConnection
             .setRemoteDescription(
               new RTCSessionDescription(
-                JSON.parse(sdpAnswer)
+                JSON.parse(
+                  sdpAnswer
+                )
               )
             );
 
 
+          console.log(
+            '✅ Remote answer set'
+          );
+
+
           await this.processPendingIceCandidates();
+
 
         } catch (error) {
 
@@ -756,6 +986,7 @@ public isTyping$ =
 
     this.connection.on(
       'ReceiveIceCandidate',
+
       async (
         fromUserId: string,
         candidateString: string
@@ -793,7 +1024,17 @@ public isTyping$ =
                 )
               );
 
+
+            console.log(
+              '✅ ICE candidate added'
+            );
+
           } else {
+
+            console.log(
+              '⏳ Queuing ICE candidate'
+            );
+
 
             this.pendingIceCandidates
               .push(candidate);
@@ -818,6 +1059,7 @@ public isTyping$ =
 
     this.connection.on(
       'CallAccepted',
+
       (
         fromUserId: string
       ) => {
@@ -836,6 +1078,10 @@ public isTyping$ =
           .next(fromUserId);
 
 
+        this.isCallActive$
+          .next(true);
+
+
         this.stopRingtone();
 
       }
@@ -848,6 +1094,7 @@ public isTyping$ =
 
     this.connection.on(
       'CallRejected',
+
       (
         fromUserId: string
       ) => {
@@ -868,6 +1115,7 @@ public isTyping$ =
 
         this.cleanupWebRTC();
 
+
         this.stopRingtone();
 
       }
@@ -880,6 +1128,7 @@ public isTyping$ =
 
     this.connection.on(
       'CallEnded',
+
       (
         fromUserId: string
       ) => {
@@ -899,6 +1148,7 @@ public isTyping$ =
 
 
         this.cleanupWebRTC();
+
 
         this.stopRingtone();
 
@@ -933,44 +1183,111 @@ public isTyping$ =
       targetUserId;
 
 
-    // Create WebRTC connection
-    await this.createPeerConnection(
-      targetUserId
-    );
+    try {
 
+      // -----------------------------------------------------
+      // Create WebRTC
+      // -----------------------------------------------------
 
-    // Ring receiver
-    await this.safeInvoke(
-      'RingUser',
-      targetUserId
-    );
-
-
-    // Create offer
-    const offer =
-      await this.peerConnection!
-        .createOffer({
-
-          offerToReceiveAudio: true,
-
-          offerToReceiveVideo: true
-
-        });
-
-
-    // Set local description
-    await this.peerConnection!
-      .setLocalDescription(
-        offer
+      await this.createPeerConnection(
+        targetUserId
       );
 
 
-    // Send offer
-    await this.safeInvoke(
-      'SendOffer',
-      targetUserId,
-      JSON.stringify(offer)
-    );
+      // -----------------------------------------------------
+      // Show video UI
+      // -----------------------------------------------------
+
+      this.isCallActive$
+        .next(true);
+
+
+      // -----------------------------------------------------
+      // Notify receiver
+      // -----------------------------------------------------
+
+      await this.safeInvoke(
+        'RingUser',
+        targetUserId
+      );
+
+
+      console.log(
+        '🔔 Receiver ringing'
+      );
+
+
+      // -----------------------------------------------------
+      // Create offer
+      // -----------------------------------------------------
+
+      const offer =
+        await this.peerConnection!
+          .createOffer({
+
+            offerToReceiveAudio: true,
+
+            offerToReceiveVideo: true
+
+          });
+
+
+      // -----------------------------------------------------
+      // Set local description
+      // -----------------------------------------------------
+
+      await this.peerConnection!
+        .setLocalDescription(
+          offer
+        );
+
+
+      console.log(
+        '✅ Local offer created'
+      );
+
+
+      // -----------------------------------------------------
+      // Send offer
+      // -----------------------------------------------------
+
+      await this.safeInvoke(
+        'SendOffer',
+
+        targetUserId,
+
+        JSON.stringify(
+          offer
+        )
+      );
+
+
+      console.log(
+        '📨 Offer sent'
+      );
+
+
+    } catch (error) {
+
+      console.error(
+        '❌ Failed to start call:',
+        error
+      );
+
+
+      this.activeCallUserId =
+        null;
+
+
+      this.isCallActive$
+        .next(false);
+
+
+      this.cleanupWebRTC();
+
+
+      throw error;
+    }
   }
 
 
@@ -1000,6 +1317,12 @@ public isTyping$ =
       fromUserId;
 
 
+    // Show video area
+    this.isCallActive$
+      .next(true);
+
+
+    // Tell server
     await this.safeInvoke(
       'AcceptCall',
       fromUserId
@@ -1009,6 +1332,7 @@ public isTyping$ =
     this.stopRingtone();
 
 
+    // Remove popup
     this.incomingCall$
       .next(null);
 
@@ -1036,10 +1360,21 @@ public isTyping$ =
     );
 
 
-    await this.safeInvoke(
-      'RejectCall',
-      fromUserId
-    );
+    try {
+
+      await this.safeInvoke(
+        'RejectCall',
+        fromUserId
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Failed to reject call:',
+        error
+      );
+
+    }
 
 
     this.activeCallUserId =
@@ -1078,7 +1413,10 @@ public isTyping$ =
     );
 
 
-    // Notify remote user FIRST
+    // -------------------------------------------------------
+    // Notify remote first
+    // -------------------------------------------------------
+
     if (
       notifyServer &&
       targetUserId
@@ -1102,20 +1440,32 @@ public isTyping$ =
     }
 
 
+    // -------------------------------------------------------
     // Clear active user
+    // -------------------------------------------------------
+
     this.activeCallUserId =
       null;
 
 
+    // -------------------------------------------------------
     // Cleanup WebRTC
+    // -------------------------------------------------------
+
     this.cleanupWebRTC();
 
 
+    // -------------------------------------------------------
     // Stop ringtone
+    // -------------------------------------------------------
+
     this.stopRingtone();
 
 
+    // -------------------------------------------------------
     // Clear incoming state
+    // -------------------------------------------------------
+
     this.incomingCall$
       .next(null);
 
@@ -1130,18 +1480,47 @@ public isTyping$ =
 
   private cleanupWebRTC(): void {
 
+    console.log(
+      '🧹 Cleaning up WebRTC'
+    );
+
+
+    // -------------------------------------------------------
+    // Peer connection
+    // -------------------------------------------------------
+
     if (this.peerConnection) {
 
-      this.peerConnection.ontrack = null;
+      this.peerConnection.ontrack =
+        null;
 
-      this.peerConnection.onicecandidate = null;
+      this.peerConnection.onicecandidate =
+        null;
 
-      this.peerConnection.close();
+      this.peerConnection.onconnectionstatechange =
+        null;
+
+      this.peerConnection.oniceconnectionstatechange =
+        null;
+
+
+      try {
+
+        this.peerConnection.close();
+
+      } catch {
+        // Ignore
+      }
+
 
       this.peerConnection =
         null;
     }
 
+
+    // -------------------------------------------------------
+    // Local media
+    // -------------------------------------------------------
 
     if (this.localStream) {
 
@@ -1153,40 +1532,63 @@ public isTyping$ =
 
         });
 
+
       this.localStream =
         null;
     }
 
 
+    // -------------------------------------------------------
+    // Local video
+    // -------------------------------------------------------
+
     const localVideo =
       document.getElementById(
         'localVideo'
-      ) as HTMLVideoElement;
+      ) as HTMLVideoElement | null;
 
 
     if (localVideo) {
 
+      localVideo.pause();
+
       localVideo.srcObject =
         null;
-
     }
 
+
+    // -------------------------------------------------------
+    // Remote video
+    // -------------------------------------------------------
 
     const remoteVideo =
       document.getElementById(
         'remoteVideo'
-      ) as HTMLVideoElement;
+      ) as HTMLVideoElement | null;
 
 
     if (remoteVideo) {
 
+      remoteVideo.pause();
+
       remoteVideo.srcObject =
         null;
-
     }
 
 
+    // -------------------------------------------------------
+    // Clear ICE
+    // -------------------------------------------------------
+
     this.pendingIceCandidates = [];
+
+
+    // -------------------------------------------------------
+    // Hide call UI
+    // -------------------------------------------------------
+
+    this.isCallActive$
+      .next(false);
   }
 
 
@@ -1235,8 +1637,10 @@ public isTyping$ =
 
     this.ringtone.pause();
 
-    this.ringtone.currentTime = 0;
+    this.ringtone.currentTime =
+      0;
 
-    this.ringtone = null;
+    this.ringtone =
+      null;
   }
 }
