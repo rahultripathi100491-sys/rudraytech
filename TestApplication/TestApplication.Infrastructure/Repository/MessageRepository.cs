@@ -11,15 +11,14 @@ namespace TestApplication.Infrastructure.Repository
     public class MessageRepository : IMessageRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly IEncryptionService _encryptionService;
 
-        public MessageRepository(ApplicationDbContext context)
+        public MessageRepository(ApplicationDbContext context, IEncryptionService encryptionService)
         {
             _context = context;
+            _encryptionService = encryptionService;
         }
-        public async Task<Guid?> GetPrivateConversationIdAsync(
-        Guid currentUserId,
-        Guid targetUserId,
-        CancellationToken cancellationToken = default)
+        public async Task<Guid?> GetPrivateConversationIdAsync(Guid currentUserId, Guid targetUserId, CancellationToken cancellationToken = default)
         {
             var conversationId = await _context.ConversationMembers
                 .AsNoTracking()
@@ -38,22 +37,27 @@ namespace TestApplication.Infrastructure.Repository
             return conversationId == Guid.Empty ? null : conversationId;
         }
 
-        public async Task<List<MessageHistoryDto>> GetMessageHistoryByConversationIdAsync(
-            Guid conversationId,
-            CancellationToken cancellationToken = default)
+        public async Task<List<MessageHistoryDto>> GetMessageHistoryByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default)
         {
-            return await _context.Messages
-                .AsNoTracking()
-                .Where(x => x.ConversationId == conversationId)
-                .OrderBy(x => x.SentAt)
-                .Select(x => new MessageHistoryDto
-                {
-                    Id = x.Id,
-                    SenderUserId = x.SenderId,
-                    Content = x.Content,
-                    SentAtUtc = x.SentAt
-                })
-                .ToListAsync(cancellationToken);
+            try
+            {
+                return await _context.Messages
+                    .AsNoTracking()
+                    .Where(x => x.ConversationId == conversationId)
+                    .OrderBy(x => x.SentAt)
+                    .Select(x => new MessageHistoryDto
+                    {
+                        Id = x.Id,
+                        SenderUserId = x.SenderId,
+                        Content = _encryptionService.Decrypt(x.Content),
+                        SentAtUtc = x.SentAt
+                    })
+                    .ToListAsync(cancellationToken);
+            }
+            catch(Exception ex)
+            {
+                throw;
+            }
         }
 
         public async Task<MessageHistoryDto> SaveMessageAsync(
@@ -86,7 +90,7 @@ namespace TestApplication.Infrastructure.Repository
                 Id = Guid.NewGuid(),
                 ConversationId = conversationId.Value,
                 SenderId = senderId,
-                Content = content,
+                Content = _encryptionService.Decrypt(content),
                 SentAt = DateTime.UtcNow
             };
 
@@ -98,7 +102,7 @@ namespace TestApplication.Infrastructure.Repository
             {
                 Id = message.Id,
                 SenderUserId = message.SenderId,
-                Content = message.Content,
+                Content = _encryptionService.Decrypt(message.Content),
                 SentAtUtc = message.SentAt
             };
             }
@@ -117,7 +121,7 @@ namespace TestApplication.Infrastructure.Repository
                     Id = c.Id,
                     ParticipantUserId = c.Members.Where(m => m.UserId != UserId).Select(m => m.UserId).FirstOrDefault(),
                     ParticipantName = c.Members.Where(m => m.UserId != UserId).Select(m => m.User.FirstName + " " + m.User.LastName).FirstOrDefault() ?? "Unknown User",
-                    LastMessage = c.Messages.OrderByDescending(m => m.SentAt).Select(m => m.Content).FirstOrDefault(),
+                    LastMessage = _encryptionService.Decrypt(c.Messages.OrderByDescending(m => m.SentAt).Select(m => m.Content).FirstOrDefault()!),
                     UnreadCount = 0 // Connect your unread tracking logic here if needed
                 })
                 .ToListAsync(cancellationToken);

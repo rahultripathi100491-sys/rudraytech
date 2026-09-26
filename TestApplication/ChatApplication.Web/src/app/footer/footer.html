@@ -1,1 +1,18 @@
-<p>footer works!</p>
+<footer class="chat-input-area">
+  <form (ngSubmit)="onSendMessage()" class="input-form">
+    <!-- <input 
+      type="text" 
+      [(ngModel)]="newMessageText" 
+      name="newMessageText"
+      placeholder="Type your message..." 
+      autocomplete="off"
+      [disabled]="isSending" /> -->
+
+    <button 
+      type="submit" 
+      [disabled]="!newMessageText.trim() || isSending" 
+      class="send-btn">
+      <i class="bi bi-send-fill"></i> <!-- Bootstrap icon -->
+    </button>
+  </form>
+</footer>

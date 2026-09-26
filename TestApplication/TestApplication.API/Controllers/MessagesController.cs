@@ -19,9 +19,7 @@ namespace TestApplication.API.Controllers
         }
 
         [HttpGet("history")]
-        public async Task<IActionResult> GetHistory(
-       [FromQuery] Guid targetUserId,
-       CancellationToken cancellationToken)
+        public async Task<IActionResult> GetHistory([FromQuery] Guid targetUserId, CancellationToken cancellationToken)
         {
             if (targetUserId == Guid.Empty)
             {
@@ -31,9 +29,7 @@ namespace TestApplication.API.Controllers
                 });
             }
 
-            var currentUserIdClaim =
-                User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? User.FindFirst("sub")?.Value;
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
 
             if (!Guid.TryParse(currentUserIdClaim, out var currentUserId))
             {
@@ -43,11 +39,7 @@ namespace TestApplication.API.Controllers
                 });
             }
 
-            var result = await _mediator.Send(
-                new GetMessageHistoryQuery(
-                    currentUserId,
-                    targetUserId),
-                cancellationToken);
+            var result = await _mediator.Send(new GetMessageHistoryQuery(currentUserId, targetUserId), cancellationToken);
 
             return Ok(result);
         }
