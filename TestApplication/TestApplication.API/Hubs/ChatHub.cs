@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using TestApplication.Application.Common.Command;
+using TestApplication.Domain.Entity;
+using TestApplication.Infrastructure.Interface;
 
 namespace TestApplication.API.Hubs
 {
@@ -10,10 +12,12 @@ namespace TestApplication.API.Hubs
     public class ChatHub : Hub
     {
         private readonly ISender _mediator;
+        private readonly IEncryptionService _encryptionService;
 
-        public ChatHub(ISender mediator)
+        public ChatHub(ISender mediator, IEncryptionService encryptionService)
         {
             _mediator = mediator;
+            _encryptionService = encryptionService;
         }
 
         public async Task JoinConversation(string ConversationId)
@@ -50,7 +54,9 @@ namespace TestApplication.API.Hubs
             }
 
             // Send Command via MediatR to save message to Database
-            var command = new SendMessageCommand(senderId, targetId, content);
+
+            var encryptedMessage = _encryptionService.Encrypt(content);
+            var command = new SendMessageCommand(senderId, targetId, encryptedMessage);
             var createdMessage = await _mediator.Send(command);
 
             // Broadcast to target user connection/group
@@ -74,5 +80,22 @@ namespace TestApplication.API.Hubs
                 .Others
                 .SendAsync("UserOffline", UserId);
         }
+        public async Task SendOffer(string targetUserId, string offer) =>
+        await Clients.User(targetUserId).SendAsync("ReceiveOffer", Context.UserIdentifier, offer);
+
+        public async Task SendAnswer(string targetUserId, string answer) =>
+            await Clients.User(targetUserId).SendAsync("ReceiveAnswer", Context.UserIdentifier, answer);
+
+        public async Task SendIceCandidate(string targetUserId, string candidate) =>
+            await Clients.User(targetUserId).SendAsync("ReceiveIceCandidate", Context.UserIdentifier, candidate);
+
+        public async Task RingUser(string targetUserId) =>
+            await Clients.User(targetUserId).SendAsync("IncomingCall", Context.UserIdentifier);
+
+        public async Task AcceptCall(string targetUserId) =>
+            await Clients.User(targetUserId).SendAsync("CallAccepted", Context.UserIdentifier);
+
+        public async Task RejectCall(string targetUserId) =>
+            await Clients.User(targetUserId).SendAsync("CallRejected", Context.UserIdentifier);
     }
 }

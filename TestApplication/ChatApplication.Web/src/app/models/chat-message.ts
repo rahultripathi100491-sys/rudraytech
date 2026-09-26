@@ -13,3 +13,10 @@ export interface Conversation {
   lastMessage?: string;
   unreadCount: number;
 }
+export interface MessageNotification {
+  id: string;
+  senderUserId: string;
+  senderUserName: string;
+  message: string;
+  receivedAt: string;
+}

@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable, Subscription } from 'rxjs';
 import { ChatService, UserSearchResult } from '../services/chat';
 import { ChatMessage, Conversation } from '../models/chat-message';
+import { CallService } from '../services/call.service';
 
 @Component({
   selector: 'app-chat-window',
@@ -20,9 +21,11 @@ import { ChatMessage, Conversation } from '../models/chat-message';
   templateUrl: './chat-window.html',
   styleUrls: ['./chat-window.css']
 })
-export class ChatWindowComponent implements OnInit {
-
+export class ChatWindowComponent implements OnInit, OnDestroy, AfterViewChecked {
   protected chatService = inject(ChatService);
+  protected callService = inject(CallService);
+
+  public incomingCallUserId: string | null = null;
   public showNewChatModal = false;
   public searchQuery = '';
   public searchResults: UserSearchResult[] = [];
@@ -33,17 +36,24 @@ export class ChatWindowComponent implements OnInit {
   public activeTargetUserId: string | null = null;
   public activeTargetName: string = '';
   public currentUserId: string = localStorage.getItem('userId') || '';
-  
+
   public newMessageText: string = '';
   public isSending: boolean = false;
 
-  private messageSubscription!: Subscription;
+  private subscriptions = new Subscription();
 
   ngOnInit(): void {
-    // Auto-scroll whenever active messages stream receives new payloads
-    this.messageSubscription = this.chatService.activeMessages$.subscribe(() => {
-      this.scrollToBottom();
-    });
+    this.subscriptions.add(
+      this.chatService.activeMessages$.subscribe(() => {
+        this.scrollToBottom();
+      })
+    );
+
+    this.subscriptions.add(
+      this.callService.incomingCall$.subscribe((fromUserId) => {
+        this.incomingCallUserId = fromUserId;
+      })
+    );
   }
 
   ngAfterViewChecked(): void {
@@ -64,15 +74,13 @@ export class ChatWindowComponent implements OnInit {
     if (!this.searchQuery.trim()) {
       this.searchResults = [];
       return;
-    }this.chatService.searchUsers(this.searchQuery).subscribe({
+    }
+    this.chatService.searchUsers(this.searchQuery).subscribe({
       next: (results) => (this.searchResults = results),
       error: (err) => console.error('Failed to search users:', err)
     });
   }
 
-  /**
-   * Selects a contact, loads history, and opens active chat session
-   */
   public selectConversation(targetUserId: string, targetName?: string): void {
     this.activeTargetUserId = targetUserId;
     if (targetName) {
@@ -81,23 +89,17 @@ export class ChatWindowComponent implements OnInit {
     this.chatService.loadConversationHistory(targetUserId);
   }
 
-  /**
-   * Dispatches new message via ChatService
-   */
   public async onSendMessage(): Promise<void> {
     if (!this.newMessageText.trim() || !this.activeTargetUserId || this.isSending) {
       return;
     }
-
     const messageContent = this.newMessageText;
-    this.newMessageText = ''; // Instant input reset
+    this.newMessageText = '';
     this.isSending = true;
-
     try {
       await this.chatService.sendMessage(this.activeTargetUserId, messageContent);
     } catch (error) {
       console.error('Failed to dispatch message:', error);
-      // Restore draft input on dispatch error
       this.newMessageText = messageContent;
     } finally {
       this.isSending = false;
@@ -105,39 +107,51 @@ export class ChatWindowComponent implements OnInit {
     }
   }
 
-  /**
-   * Keeps active chat viewport scrolled to bottom
-   */
   private scrollToBottom(): void {
     try {
       if (this.scrollContainer) {
-        this.scrollContainer.nativeElement.scrollTop = 
+        this.scrollContainer.nativeElement.scrollTop =
           this.scrollContainer.nativeElement.scrollHeight;
       }
-    } catch (err) {
-      // Container element might be unmounted
-    }
+    } catch {}
   }
 
-  ngOnDestroy(): void {
-    if (this.messageSubscription) {
-      this.messageSubscription.unsubscribe();
-    }
-  }
-  // Action to start or select a conversation
   public startConversation(targetUserId: string, targetName: string): void {
     this.activeTargetUserId = targetUserId;
     this.activeTargetName = targetName;
     this.chatService.loadConversationHistory(targetUserId);
   }
+
   public selectUserAndStartChat(user: UserSearchResult): void {
     this.activeTargetUserId = user.id;
     this.activeTargetName = user.name;
-
-    // 1. Close search UI
     this.closeNewChatModal();
-
-    // 2. Load existing history (returns [] if new user)
     this.chatService.loadConversationHistory(user.id);
+  }
+
+  // 📞 Call Management Handlers
+  public startCall(): void {
+    if (!this.activeTargetUserId) return;
+    this.callService.startCall(this.activeTargetUserId);
+  }
+
+  public acceptIncomingCall(): void {
+    if (this.incomingCallUserId) {
+      this.callService.acceptCall(this.incomingCallUserId);
+    }
+  }
+
+  public rejectIncomingCall(): void {
+    if (this.incomingCallUserId) {
+      this.callService.rejectCall(this.incomingCallUserId);
+    }
+  }
+
+  public endCall(): void {
+    this.callService.endCall();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
   }
 }

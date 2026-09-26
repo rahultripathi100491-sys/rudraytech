@@ -1,0 +1,37 @@
+.chat-input-area {
+  flex-shrink: 0; /* keeps footer visible */
+  padding: 0.75rem;
+  border-top: 1px solid #ddd;
+  background: #fff;
+}
+
+.input-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-form input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  font-size: 0.95rem;
+}
+
+.send-btn {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 1rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-btn:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}

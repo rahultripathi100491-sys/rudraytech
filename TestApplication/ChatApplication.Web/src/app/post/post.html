@@ -1,1 +1,361 @@
-<p>post works!</p>
+<div class="posts-wrapper">
+
+  <div class="posts-container">
+
+
+    <!-- =====================================
+         FEED HEADER
+    ====================================== -->
+
+    <header class="feed-header">
+
+      <h2>
+        Community Feed
+      </h2>
+
+      <span
+        class="post-count"
+        *ngIf="posts.length > 0">
+
+        {{ posts.length }}
+
+        {{ posts.length === 1 ? 'post' : 'posts' }}
+
+      </span>
+
+    </header>
+
+
+
+    <!-- =====================================
+         CREATE POST CARD
+    ====================================== -->
+
+    <div class="create-post-card">
+
+
+      <!-- =================================
+           HTML EDITOR
+      ================================== -->
+
+      <div
+        #editor
+        class="editor"
+        contenteditable="true"
+        data-placeholder="What's on your mind?"
+        (input)="onEditorInput($event)"
+        (paste)="onEditorPaste($event)"
+        aria-label="Post editor">
+      </div>
+
+
+
+      <!-- =================================
+           EDITOR TOOLBAR
+      ================================== -->
+
+      <div class="editor-toolbar">
+
+
+        <!-- Bold -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Bold"
+          (click)="format('bold')">
+
+          <strong>B</strong>
+
+        </button>
+
+
+
+        <!-- Italic -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Italic"
+          (click)="format('italic')">
+
+          <em>I</em>
+
+        </button>
+
+
+
+        <!-- Underline -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Underline"
+          (click)="format('underline')">
+
+          <u>U</u>
+
+        </button>
+
+
+
+        <!-- Separator -->
+
+        <span class="toolbar-separator"></span>
+
+
+
+        <!-- Bullet List -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Bullet List"
+          (click)="format('insertUnorderedList')">
+
+          ☷
+
+        </button>
+
+
+
+        <!-- Number List -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Numbered List"
+          (click)="format('insertOrderedList')">
+
+          ≡
+
+        </button>
+
+
+
+        <!-- Separator -->
+
+        <span class="toolbar-separator"></span>
+
+
+
+        <!-- Align Left -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Align Left"
+          (click)="format('justifyLeft')">
+
+          ≡
+
+        </button>
+
+
+
+        <!-- Center -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Center"
+          (click)="format('justifyCenter')">
+
+          ≡
+
+        </button>
+
+
+
+        <!-- Align Right -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Align Right"
+          (click)="format('justifyRight')">
+
+          ≡
+
+        </button>
+
+
+
+        <!-- Separator -->
+
+        <span class="toolbar-separator"></span>
+
+
+
+        <!-- Link -->
+
+        <button
+          type="button"
+          class="toolbar-button"
+          title="Add Link"
+          (click)="addLink()">
+
+          🔗
+
+        </button>
+
+
+
+        <!-- Clear Formatting -->
+
+        <button
+          type="button"
+          class="toolbar-button clear-format"
+          title="Clear Formatting"
+          (click)="clearFormatting()">
+
+          Tx
+
+        </button>
+
+      </div>
+
+
+
+      <!-- =================================
+           ACTIONS
+      ================================== -->
+
+      <div class="card-actions">
+
+        <button
+          type="button"
+          class="post-btn"
+          [disabled]="
+            !newPostContent.trim() ||
+            isSubmitting
+          "
+          (click)="onCreatePost()">
+
+          <span *ngIf="!isSubmitting">
+            Publish Post
+          </span>
+
+          <span *ngIf="isSubmitting">
+            Posting...
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+
+    <!-- =====================================
+         POSTS LIST
+    ====================================== -->
+
+    <div class="posts-list">
+
+
+      @for (
+        post of posts;
+        track post.id
+      ) {
+
+        <article class="post-card">
+
+
+          <!-- ================================
+               POST HEADER
+          ================================= -->
+
+          <div class="post-header">
+
+
+            <div class="author-info">
+
+
+              <!-- Avatar -->
+
+              <div class="avatar-placeholder">
+
+                {{
+                  post.userName
+                    ? post.userName
+                        .charAt(0)
+                        .toUpperCase()
+                    : '?'
+                }}
+
+              </div>
+
+
+
+              <!-- Username -->
+
+              <span class="author">
+
+                {{ post.userName }}
+
+              </span>
+
+            </div>
+
+
+
+            <!-- Post Time -->
+
+            <time
+              class="time"
+              [attr.datetime]="post.createdAtUtc">
+
+              {{ post.createdAtUtc | date:'short' }}
+
+            </time>
+
+          </div>
+
+
+
+          <!-- ================================
+               POST CONTENT
+          ================================= -->
+
+          <div
+            class="post-content"
+            [innerHTML]="post.content">
+          </div>
+
+
+        </article>
+
+      }
+
+
+      <!-- =====================================
+           EMPTY STATE
+      ====================================== -->
+
+      @empty {
+
+        <div class="empty-state">
+
+          <div class="empty-icon">
+            📝
+          </div>
+
+          <h3>
+            No posts yet
+          </h3>
+
+          <p>
+            Be the first to publish something!
+          </p>
+
+        </div>
+
+      }
+
+    </div>
+
+  </div>
+
+</div>

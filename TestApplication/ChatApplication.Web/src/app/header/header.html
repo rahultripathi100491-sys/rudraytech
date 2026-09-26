@@ -7,25 +7,84 @@
     </button>
 
     <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto">
+      <ul class="navbar-nav ms-auto align-items-center">
 
-        <!-- Show login/register if NOT logged in -->
+        <!-- Logged Out View -->
         <ng-container *ngIf="!authService.isLoggedIn()">
           <li class="nav-item"><a class="nav-link" routerLink="/login">Login</a></li>
           <li class="nav-item"><a class="nav-link" routerLink="/register">Register</a></li>
         </ng-container>
 
-        <!-- Show posts/chat/profile/logout if logged in -->
+        <!-- Logged In View -->
         <ng-container *ngIf="authService.isLoggedIn()">
           <li class="nav-item"><a class="nav-link" routerLink="/post">Posts</a></li>
           <li class="nav-item"><a class="nav-link" routerLink="/chat">Chat</a></li>
 
-          <!-- Profile dropdown -->
+          <!-- Notifications Item -->
+          <li class="nav-item me-3 position-relative">
+            <div class="notification-container">
+
+              <button
+                type="button"
+                class="btn nav-link position-relative notification-button p-1 border-0 background-transparent"
+                (click)="toggleNotifications()">
+
+                <!-- Envelope Icon with SVG Fallback -->
+                <i class="bi bi-envelope-fill fs-5"></i>
+
+                <ng-container *ngIf="notifications$ | async as notifications">
+                  <span
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                    *ngIf="notifications.length > 0">
+                    {{ notifications.length > 99 ? '99+' : notifications.length }}
+                  </span>
+                </ng-container>
+              </button>
+
+              <!-- Dropdown Menu -->
+              <div class="notification-dropdown shadow rounded p-2" *ngIf="showNotifications">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                  <strong>Notifications</strong>
+                  <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" (click)="clearAllNotifications()">
+                    Clear all
+                  </button>
+                </div>
+
+                <ng-container *ngIf="notifications$ | async as notifications">
+                  <div class="text-muted text-center py-3" *ngIf="notifications.length === 0">
+                    No new messages
+                  </div>
+
+                  <div class="notification-list" *ngIf="notifications.length > 0">
+                    <div
+                      class="notification-item d-flex align-items-center p-2 border-bottom cursor-pointer"
+                      *ngFor="let notification of notifications; trackBy: trackByNotification"
+                      (click)="openNotification(notification)">
+
+                      <div class="notification-avatar rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 35px; height: 35px;">
+                        {{ notification.senderUserName ? notification.senderUserName.charAt(0).toUpperCase() : '?' }}
+                      </div>
+
+                      <div class="notification-content flex-grow-1">
+                        <div class="fw-bold small">{{ notification.senderUserName }}</div>
+                        <div class="text-truncate small" style="max-width: 180px;">{{ notification.message }}</div>
+                        <div class="text-muted extra-small" style="font-size: 0.75rem;">
+                          {{ notification.receivedAt | date:'short' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+              </div>
+
+            </div>
+          </li>
+
+          <!-- Profile Dropdown -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdown"
                role="button" data-bs-toggle="dropdown" aria-expanded="false">
 
-              <!-- Show profile picture if available, else initials -->
               <div class="profile-circle me-2">
                 <ng-container *ngIf="profilePic; else initials">
                   <img [src]="profilePic" alt="Profile" class="profile-img">
@@ -39,10 +98,11 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
               <li><a class="dropdown-item" routerLink="/profile">Profile</a></li>
-              <li><a class="dropdown-item" (click)="logout()">Logout</a></li>
+              <li><a class="dropdown-item cursor-pointer" (click)="logout()">Logout</a></li>
             </ul>
           </li>
         </ng-container>
+
       </ul>
     </div>
   </div>
