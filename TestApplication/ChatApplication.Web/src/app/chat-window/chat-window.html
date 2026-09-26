@@ -1,119 +1,552 @@
 <div class="chat-container">
-  <!-- Incoming Call Alert Overlay -->
-  <div *ngIf="incomingCallUserId" class="incoming-call-overlay">
-    <div class="incoming-call-overlay incoming-call-card">
-      <div class="call-avatar">📞</div>
-      <h3>Incoming Call</h3>
-      <p>User <strong>{{ incomingCallUserId }}</strong> is calling...</p>
-      <div class="call-actions-group">
-        <button class="accept-btn accept-call-btn" (click)="acceptIncomingCall()">Accept</button>
-        <button class="reject-btn reject-call-btn" (click)="rejectIncomingCall()">Decline</button>
+
+  <!-- =====================================================
+       INCOMING CALL OVERLAY
+       ===================================================== -->
+
+  <div
+    *ngIf="incomingCallUserId"
+    class="incoming-call-overlay">
+
+    <div class="incoming-call-card">
+
+      <div class="call-avatar">
+        📹
       </div>
+
+      <h3>
+        Incoming Video Call
+      </h3>
+
+      <p>
+
+        <strong>
+          {{ incomingCallName }}
+        </strong>
+
+        is calling you...
+
+      </p>
+
+      <div class="call-actions-group">
+
+        <button
+          type="button"
+          class="accept-btn"
+          (click)="acceptIncomingCall()">
+
+          📹 Accept
+
+        </button>
+
+        <button
+          type="button"
+          class="reject-btn"
+          (click)="rejectIncomingCall()">
+
+          ❌ Decline
+
+        </button>
+
+      </div>
+
     </div>
+
   </div>
 
+
+  <!-- =====================================================
+       CHAT SIDEBAR
+       ===================================================== -->
+
   <aside class="chat-sidebar">
-    <!-- Sidebar header -->
+
+    <!-- Sidebar Header -->
+
     <div class="sidebar-header">
-      <h2>Conversations</h2>
-      <button class="new-chat-btn" (click)="openNewChatModal()">+ New Chat</button>
+
+      <h2>
+        Conversations
+      </h2>
+
+      <button
+        type="button"
+        class="new-chat-btn"
+        (click)="openNewChatModal()">
+
+        + New Chat
+
+      </button>
+
     </div>
 
-    <!-- Search box -->
-    <div *ngIf="showNewChatModal" class="search-box">
-      <input 
-        type="text" 
-        [(ngModel)]="searchQuery" 
-        (input)="onSearchUsers()" 
-        placeholder="Search user by name or email..." 
-        autofocus />
+
+    <!-- ===================================================
+         SEARCH USERS
+         =================================================== -->
+
+    <div
+      *ngIf="showNewChatModal"
+      class="search-box">
+
+      <input
+        type="text"
+        [(ngModel)]="searchQuery"
+        (input)="onSearchUsers()"
+        placeholder="Search user by name or email..."
+        autocomplete="off"
+        autofocus
+      />
 
       <div class="search-results-list">
-        <div *ngFor="let user of searchResults" class="search-user-item" (click)="selectUserAndStartChat(user)">
-          <span class="user-name">{{ user.name }}</span>
-          <span class="user-email">{{ user.email }}</span>
+
+        <div
+          *ngFor="let user of searchResults"
+          class="search-user-item"
+          (click)="selectUserAndStartChat(user)">
+
+          <span class="user-name">
+            {{ user.name }}
+          </span>
+
+          <span class="user-email">
+            {{ user.email }}
+          </span>
+
         </div>
-        <p *ngIf="searchQuery.length > 0 && searchResults.length === 0" class="no-results">No users found</p>
+
+
+        <p
+          *ngIf="
+            searchQuery.trim().length > 0 &&
+            searchResults.length === 0
+          "
+          class="no-results">
+
+          No users found
+
+        </p>
+
       </div>
-      <button class="close-btn" (click)="closeNewChatModal()">Cancel</button>
+
+
+      <button
+        type="button"
+        class="close-btn"
+        (click)="closeNewChatModal()">
+
+        Cancel
+
+      </button>
+
     </div>
 
-    <!-- Conversation list -->
+
+    <!-- ===================================================
+         CONVERSATION LIST
+         =================================================== -->
+
     <div class="conversation-list">
-      <div *ngFor="let conv of (conversations$ | async)" 
-           class="conversation-item"
-           [class.active]="conv.participantUserId === activeTargetUserId"
-           (click)="startConversation(conv.participantUserId, conv.participantName)">
-        <div class="avatar">{{ conv.participantName.charAt(0).toUpperCase() }}</div>
-        <div class="conversation-info">
-          <div class="conversation-top">
-            <span class="user-name">{{ conv.participantName }}</span>
-            <span *ngIf="conv.unreadCount > 0" class="unread-badge">{{ conv.unreadCount }}</span>
-          </div>
-          <p class="last-message">{{ conv.lastMessage || 'Start conversation...' }}</p>
+
+      <div
+        *ngFor="
+          let conv of (conversations$ | async)
+        "
+        class="conversation-item"
+
+        [class.active]="
+          conv.participantUserId ===
+          activeTargetUserId
+        "
+
+        (click)="
+          startConversation(
+            conv.participantUserId,
+            conv.participantName
+          )
+        ">
+
+        <!-- Avatar -->
+
+        <div class="avatar">
+
+          {{
+            conv.participantName
+              ? conv.participantName
+                  .charAt(0)
+                  .toUpperCase()
+              : '?'
+          }}
+
         </div>
+
+
+        <!-- Conversation Info -->
+
+        <div class="conversation-info">
+
+          <div class="conversation-top">
+
+            <span class="user-name">
+
+              {{ conv.participantName }}
+
+            </span>
+
+
+            <span
+              *ngIf="conv.unreadCount > 0"
+              class="unread-badge">
+
+              {{ conv.unreadCount }}
+
+            </span>
+
+          </div>
+
+
+          <p class="last-message">
+
+            {{
+              conv.lastMessage ||
+              'Start conversation...'
+            }}
+
+          </p>
+
+        </div>
+
       </div>
-      <div *ngIf="(conversations$ | async)?.length === 0" class="empty-state">No active conversations found</div>
+
+
+      <!-- Empty -->
+
+      <div
+        *ngIf="
+          (conversations$ | async)?.length === 0
+        "
+        class="empty-state">
+
+        No active conversations found
+
+      </div>
+
     </div>
+
   </aside>
 
-  <!-- Main Chat Panel -->
+
+  <!-- =====================================================
+       MAIN CHAT
+       ===================================================== -->
+
   <main class="chat-window">
-    <ng-container *ngIf="activeTargetUserId; else noChat">
+
+    <!-- ===================================================
+         ACTIVE CHAT
+         =================================================== -->
+
+    <ng-container
+      *ngIf="
+        activeTargetUserId;
+        else noChat
+      ">
+
+      <!-- Chat Header -->
+
       <header class="chat-header">
+
         <div class="user-status">
-          <h3>{{ activeTargetName || 'Chat' }}</h3>
-          <span class="status-indicator online">Online</span>
+
+          <h3>
+
+            {{
+              activeTargetName ||
+              'Chat'
+            }}
+
+          </h3>
+
+          <span class="status-indicator online">
+
+            Online
+
+          </span>
+
         </div>
+
+
+        <!-- Call Buttons -->
+
         <div class="call-actions">
-          <button (click)="startCall()">📞 Call User</button>
-          <button (click)="endCall()">❌ End Call</button>
+
+          <button
+            type="button"
+            (click)="startCall()">
+
+            📹 Video Call
+
+          </button>
+
         </div>
+
       </header>
 
-      <div class="message-stream" #scrollContainer>
-        <div *ngFor="let msg of (chatService.activeMessages$ | async)" 
-             class="message-bubble-wrapper"
-             [class.sent]="msg.senderUserId.toLowerCase() === currentUserId.toLowerCase()"
-             [class.received]="msg.senderUserId.toLowerCase() !== currentUserId.toLowerCase()">
+
+      <!-- =================================================
+           MESSAGE STREAM
+           ================================================= -->
+
+      <div
+        class="message-stream"
+        #scrollContainer>
+
+        <div
+          *ngFor="
+            let msg of
+              (chatService.activeMessages$ | async)
+          "
+
+          class="message-bubble-wrapper"
+
+          [class.sent]="
+            msg.senderUserId &&
+            msg.senderUserId.toLowerCase() ===
+            currentUserId.toLowerCase()
+          "
+
+          [class.received]="
+            !msg.senderUserId ||
+            msg.senderUserId.toLowerCase() !==
+            currentUserId.toLowerCase()
+          ">
+
           <div class="message-bubble">
-            <p class="message-content">{{ msg.content }}</p>
-            <span class="message-timestamp">{{ (msg.sentAt || msg.sentAtUtc) | date:'shortTime' }}</span>
+
+            <p class="message-content">
+
+              {{ msg.content }}
+
+            </p>
+
+            <span class="message-timestamp">
+
+              {{
+                (msg.sentAt || msg.sentAtUtc)
+                  | date:'shortTime'
+              }}
+
+            </span>
+
           </div>
+
         </div>
-        <div *ngIf="(chatService.activeMessages$ | async)?.length === 0" class="no-messages">
-          <p>This is the start of your conversation. Send a message!</p>
+
+
+        <!-- No messages -->
+
+        <div
+          *ngIf="
+            (chatService.activeMessages$ | async)
+              ?.length === 0
+          "
+          class="no-messages">
+
+          <p>
+
+            This is the start of your
+            conversation.
+            Send a message!
+
+          </p>
+
         </div>
+
       </div>
+
+
+      <!-- =================================================
+           MESSAGE INPUT
+           ================================================= -->
 
       <footer class="chat-input-area">
-        <form (ngSubmit)="onSendMessage()" class="input-form">
-          <input 
-            type="text" 
-            [(ngModel)]="newMessageText" 
+
+        <form
+          (ngSubmit)="onSendMessage()"
+          class="input-form">
+
+          <input
+            type="text"
+            [(ngModel)]="newMessageText"
             name="newMessageText"
-            placeholder="Type your message..." 
+            placeholder="Type your message..."
             autocomplete="off"
-            [disabled]="isSending" />
-          <button type="submit" [disabled]="!newMessageText.trim() || isSending" class="send-btn">Send</button>
+            [disabled]="isSending"
+          />
+
+
+          <button
+            type="submit"
+
+            [disabled]="
+              !newMessageText.trim() ||
+              isSending
+            "
+
+            class="send-btn">
+
+            {{ isSending ? 'Sending...' : 'Send' }}
+
+          </button>
+
         </form>
+
       </footer>
+
     </ng-container>
 
+
+    <!-- ===================================================
+         NO ACTIVE CHAT
+         =================================================== -->
+
     <ng-template #noChat>
+
       <div class="no-active-chat">
+
         <div class="placeholder-content">
-          <div class="icon">💬</div>
-          <h3>Start a Conversation</h3>
-          <p>Select a user or conversation to begin real-time messaging.</p>
+
+          <div class="icon">
+            💬
+          </div>
+
+          <h3>
+            Start a Conversation
+          </h3>
+
+          <p>
+            Select a user or conversation
+            to begin real-time messaging.
+          </p>
+
         </div>
+
       </div>
+
     </ng-template>
 
-    <!-- Always keep video/audio elements rendered in DOM to avoid track detachment -->
-    <section class="video-call" [class.hidden]="!activeTargetUserId">
-      <video id="localVideo" autoplay playsinline muted></video>
-      <video id="remoteVideo" autoplay playsinline></video>
-    </section>
+
   </main>
+
+
+  <!-- =====================================================
+       VIDEO CALL UI
+       IMPORTANT:
+       This is OUTSIDE the chat *ngIf.
+       ===================================================== -->
+
+  <section
+    *ngIf="isCallActive$ | async"
+    class="video-call">
+
+    <!-- Video Call Header -->
+
+    <div class="video-call-header">
+
+      <div class="video-call-user">
+
+        <strong>
+          Video Call
+        </strong>
+
+        <span>
+
+          {{
+            activeTargetName ||
+            'Connected'
+          }}
+
+        </span>
+
+      </div>
+
+
+      <button
+        type="button"
+        class="end-call-button"
+        (click)="endCall()">
+
+        ❌ End Call
+
+      </button>
+
+    </div>
+
+
+    <!-- ===================================================
+         VIDEO AREA
+         =================================================== -->
+
+    <div class="video-grid">
+
+
+      <!-- =================================================
+           REMOTE VIDEO
+           ================================================= -->
+
+      <div
+        class="
+          video-container
+          remote-video-container
+        ">
+
+        <video
+          id="remoteVideo"
+          autoplay
+          playsinline>
+        </video>
+
+
+        <div class="video-label">
+
+          {{
+            activeTargetName ||
+            'Remote User'
+          }}
+
+        </div>
+
+      </div>
+
+
+      <!-- =================================================
+           LOCAL VIDEO
+           ================================================= -->
+
+      <div
+        class="
+          video-container
+          local-video-container
+        ">
+
+        <video
+          id="localVideo"
+          autoplay
+          playsinline
+          muted>
+        </video>
+
+
+        <div class="video-label">
+
+          You
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
 </div>

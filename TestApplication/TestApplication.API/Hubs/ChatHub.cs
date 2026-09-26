@@ -97,5 +97,12 @@ namespace TestApplication.API.Hubs
 
         public async Task RejectCall(string targetUserId) =>
             await Clients.User(targetUserId).SendAsync("CallRejected", Context.UserIdentifier);
+
+        // Make sure the method name matches 'EndCall' exactly (case-sensitive on invoke)
+        public async Task EndCall(string targetUserId)
+        {
+            // Example logic: Notify the receiving client that the call ended
+            await Clients.User(targetUserId).SendAsync("CallEnded");
+        }
     }
 }
