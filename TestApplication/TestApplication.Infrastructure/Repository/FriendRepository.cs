@@ -126,16 +126,7 @@ namespace TestApplication.Infrastructure.Repository
 
             // 2. Get people who already have a relationship
             //    with the current user.
-            var excludedIds = await _context.Friendships
-                .AsNoTracking()
-                .Where(x =>
-                    x.UserId == userId ||
-                    x.FriendId == userId)
-                .Select(x =>
-                    x.UserId == userId
-                        ? x.FriendId
-                        : x.UserId)
-                .ToListAsync(cancellationToken);
+            var excludedIds = await _context.Friendships.AsNoTracking().Where(x => x.UserId == userId || x.FriendId == userId).Select(x => x.UserId == userId ? x.FriendId : x.UserId).ToListAsync(cancellationToken);
 
             // Don't suggest yourself
             excludedIds.Add(userId);

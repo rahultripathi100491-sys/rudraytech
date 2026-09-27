@@ -1,360 +1,296 @@
-<div class="posts-wrapper">
+<div class="container mt-4">
 
-  <div class="posts-container">
-
-
-    <!-- =====================================
-         FEED HEADER
-    ====================================== -->
-
-    <header class="feed-header">
-
-      <h2>
-        Community Feed
-      </h2>
-
-      <span
-        class="post-count"
-        *ngIf="posts.length > 0">
-
-        {{ posts.length }}
-
-        {{ posts.length === 1 ? 'post' : 'posts' }}
-
-      </span>
-
-    </header>
-
-
-
-    <!-- =====================================
-         CREATE POST CARD
-    ====================================== -->
-
-    <div class="create-post-card">
-
-
-      <!-- =================================
-           HTML EDITOR
-      ================================== -->
+  <!-- Create Post -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
 
       <div
         #editor
-        class="editor"
+        class="post-editor form-control mb-3"
         contenteditable="true"
-        data-placeholder="What's on your mind?"
         (input)="onEditorInput($event)"
         (paste)="onEditorPaste($event)"
-        aria-label="Post editor">
-      </div>
+        data-placeholder="What's on your mind?"
+      ></div>
 
-
-
-      <!-- =================================
-           EDITOR TOOLBAR
-      ================================== -->
-
-      <div class="editor-toolbar">
-
-
-        <!-- Bold -->
-
+      <div class="d-flex gap-2 mb-3">
         <button
           type="button"
-          class="toolbar-button"
-          title="Bold"
+          class="btn btn-sm btn-outline-secondary"
           (click)="format('bold')">
-
-          <strong>B</strong>
-
+          <i class="bi bi-type-bold"></i>
         </button>
-
-
-
-        <!-- Italic -->
 
         <button
           type="button"
-          class="toolbar-button"
-          title="Italic"
+          class="btn btn-sm btn-outline-secondary"
           (click)="format('italic')">
-
-          <em>I</em>
-
+          <i class="bi bi-type-italic"></i>
         </button>
-
-
-
-        <!-- Underline -->
 
         <button
           type="button"
-          class="toolbar-button"
-          title="Underline"
-          (click)="format('underline')">
-
-          <u>U</u>
-
-        </button>
-
-
-
-        <!-- Separator -->
-
-        <span class="toolbar-separator"></span>
-
-
-
-        <!-- Bullet List -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Bullet List"
-          (click)="format('insertUnorderedList')">
-
-          ☷
-
-        </button>
-
-
-
-        <!-- Number List -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Numbered List"
-          (click)="format('insertOrderedList')">
-
-          ≡
-
-        </button>
-
-
-
-        <!-- Separator -->
-
-        <span class="toolbar-separator"></span>
-
-
-
-        <!-- Align Left -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Align Left"
-          (click)="format('justifyLeft')">
-
-          ≡
-
-        </button>
-
-
-
-        <!-- Center -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Center"
-          (click)="format('justifyCenter')">
-
-          ≡
-
-        </button>
-
-
-
-        <!-- Align Right -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Align Right"
-          (click)="format('justifyRight')">
-
-          ≡
-
-        </button>
-
-
-
-        <!-- Separator -->
-
-        <span class="toolbar-separator"></span>
-
-
-
-        <!-- Link -->
-
-        <button
-          type="button"
-          class="toolbar-button"
-          title="Add Link"
+          class="btn btn-sm btn-outline-secondary"
           (click)="addLink()">
-
-          🔗
-
+          <i class="bi bi-link-45deg"></i>
         </button>
-
-
-
-        <!-- Clear Formatting -->
 
         <button
           type="button"
-          class="toolbar-button clear-format"
-          title="Clear Formatting"
+          class="btn btn-sm btn-outline-secondary"
           (click)="clearFormatting()">
-
-          Tx
-
+          Clear
         </button>
-
       </div>
 
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="isSubmitting"
+        (click)="onCreatePost()">
 
+        <span *ngIf="!isSubmitting">
+          Post
+        </span>
 
-      <!-- =================================
-           ACTIONS
-      ================================== -->
-
-      <div class="card-actions">
-
-        <button
-          type="button"
-          class="post-btn"
-          [disabled]="
-            !newPostContent.trim() ||
-            isSubmitting
-          "
-          (click)="onCreatePost()">
-
-          <span *ngIf="!isSubmitting">
-            Publish Post
-          </span>
-
-          <span *ngIf="isSubmitting">
-            Posting...
-          </span>
-
-        </button>
-
-      </div>
+        <span *ngIf="isSubmitting">
+          Posting...
+        </span>
+      </button>
 
     </div>
+  </div>
 
 
-
-    <!-- =====================================
-         POSTS LIST
-    ====================================== -->
-
-    <div class="posts-list">
-
-
-      @for (
-        post of posts;
-        track post.id
-      ) {
-
-        <article class="post-card">
+  <!-- Error -->
+  <div
+    *ngIf="errorMessage"
+    class="alert alert-danger">
+    {{ errorMessage }}
+  </div>
 
 
-          <!-- ================================
-               POST HEADER
-          ================================= -->
+  <!-- Posts -->
+  <div
+    *ngFor="let postItem of posts; trackBy: trackByPost"
+    class="card shadow-sm mb-4">
 
-          <div class="post-header">
+    <!-- Post Header -->
+    <div class="card-body pb-2">
+
+      <div class="d-flex align-items-center mb-3">
+
+        <div
+          class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2"
+          style="width: 42px; height: 42px;">
+
+          {{ getPostInitial(postItem) }}
+
+        </div>
+
+        <div>
+          <div class="fw-bold">
+            {{ getPostUserName(postItem) }}
+          </div>
+
+          <small class="text-muted">
+            {{ getPostDate(postItem) }}
+          </small>
+        </div>
+
+      </div>
 
 
-            <div class="author-info">
+      <!-- Post Content -->
+      <div
+        class="post-content mb-3"
+        [innerHTML]="postItem.content">
+      </div>
 
 
-              <!-- Avatar -->
+      <!-- Like / Comment Summary -->
+      <div
+        class="d-flex justify-content-between align-items-center text-muted small border-bottom pb-2">
 
-              <div class="avatar-placeholder">
+        <span *ngIf="postItem.likeCount > 0">
+          <i class="bi bi-hand-thumbs-up-fill text-primary"></i>
+          {{ postItem.likeCount }}
+          {{ postItem.likeCount === 1 ? 'Like' : 'Likes' }}
+        </span>
 
-                {{
-                  post.userName
-                    ? post.userName
-                        .charAt(0)
-                        .toUpperCase()
-                    : '?'
-                }}
+        <span
+          *ngIf="postItem.likeCount === 0">
+          No likes yet
+        </span>
 
-              </div>
+        <button
+          type="button"
+          class="btn btn-link btn-sm text-muted text-decoration-none"
+          (click)="toggleComments(postItem)">
+
+          {{ postItem.commentCount || 0 }}
+          {{ (postItem.commentCount || 0) === 1 ? 'Comment' : 'Comments' }}
+
+        </button>
+
+      </div>
 
 
+      <!-- Action Buttons -->
+      <div class="d-flex border-bottom">
 
-              <!-- Username -->
+        <!-- LIKE -->
+        <button
+          type="button"
+          class="btn flex-fill"
+          [disabled]="loadingLikePostId === postItem.id"
+          [class.text-primary]="postItem.isLikedByCurrentUser"
+          (click)="toggleLike(postItem)">
 
-              <span class="author">
+          <i
+            class="bi"
+            [class.bi-hand-thumbs-up-fill]="postItem.isLikedByCurrentUser"
+            [class.bi-hand-thumbs-up]="!postItem.isLikedByCurrentUser">
+          </i>
 
-                {{ post.userName }}
+          {{ postItem.isLikedByCurrentUser ? 'Liked' : 'Like' }}
 
-              </span>
+          <span *ngIf="postItem.likeCount > 0">
+            ({{ postItem.likeCount }})
+          </span>
+
+        </button>
+
+
+        <!-- COMMENT -->
+        <button
+          type="button"
+          class="btn flex-fill"
+          (click)="toggleComments(postItem)">
+
+          <i class="bi bi-chat"></i>
+
+          Comment
+
+          <span *ngIf="postItem.commentCount > 0">
+            ({{ postItem.commentCount }})
+          </span>
+
+        </button>
+
+      </div>
+
+
+      <!-- COMMENTS -->
+      <div
+        class="comments-section mt-3"
+        *ngIf="postItem.commentsVisible">
+
+        <!-- Loading -->
+        <div
+          *ngIf="postItem.loadingComments"
+          class="text-muted text-center py-2">
+
+          Loading comments...
+
+        </div>
+
+
+        <!-- Comments -->
+        <div
+          *ngIf="!postItem.loadingComments">
+
+          <div
+            *ngFor="let comment of postItem.comments"
+            class="d-flex mb-3">
+
+            <!-- Avatar -->
+            <div
+              class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 flex-shrink-0"
+              style="width: 35px; height: 35px;">
+
+              {{ getCommentInitial(comment) }}
 
             </div>
 
 
+            <!-- Comment -->
+            <div
+              class="bg-light rounded px-3 py-2 flex-grow-1">
 
-            <!-- Post Time -->
+              <div class="fw-bold small">
+                {{ getCommentUserName(comment) }}
+              </div>
 
-            <time
-              class="time"
-              [attr.datetime]="post.createdAtUtc">
+              <div class="small">
+                {{ getCommentContent(comment) }}
+              </div>
 
-              {{ post.createdAtUtc | date:'short' }}
+              <small class="text-muted">
+                {{ getCommentDate(comment) }}
+              </small>
 
-            </time>
+            </div>
 
           </div>
 
 
-
-          <!-- ================================
-               POST CONTENT
-          ================================= -->
-
+          <!-- No Comments -->
           <div
-            class="post-content"
-            [innerHTML]="post.content">
+            *ngIf="postItem.comments.length === 0"
+            class="text-muted text-center py-2">
+
+            No comments yet.
+
           </div>
-
-
-        </article>
-
-      }
-
-
-      <!-- =====================================
-           EMPTY STATE
-      ====================================== -->
-
-      @empty {
-
-        <div class="empty-state">
-
-          <div class="empty-icon">
-            📝
-          </div>
-
-          <h3>
-            No posts yet
-          </h3>
-
-          <p>
-            Be the first to publish something!
-          </p>
 
         </div>
 
-      }
+
+        <!-- Add Comment -->
+        <div class="d-flex gap-2 mt-3">
+
+          <input
+            type="text"
+            class="form-control"
+            [(ngModel)]="postItem.commentText"
+            placeholder="Write a comment..."
+            (keyup.enter)="addComment(postItem)"
+          />
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="
+              !postItem.commentText?.trim() ||
+              postItem.addingComment
+            "
+            (click)="addComment(postItem)">
+
+            <span *ngIf="!postItem.addingComment">
+              Send
+            </span>
+
+            <span *ngIf="postItem.addingComment">
+              ...
+            </span>
+
+          </button>
+
+        </div>
+
+      </div>
 
     </div>
+  </div>
+
+
+  <!-- No Posts -->
+  <div
+    *ngIf="posts.length === 0"
+    class="text-center text-muted py-5">
+
+    No posts available.
 
   </div>
 

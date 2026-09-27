@@ -33,15 +33,24 @@ export class Post implements OnInit {
   @ViewChild('editor')
   editor!: ElementRef<HTMLDivElement>;
 
+  // =========================
+  // POSTS
+  // =========================
+
   public posts: PostItem[] = [];
 
-  public newPostContent: string = '';
+  public newPostContent = '';
 
-  public isSubmitting: boolean = false;
+  public isSubmitting = false;
+
+  public errorMessage = '';
+
+  // ID of the post currently being liked
+  public loadingLikePostId: string | null = null;
 
 
   // =========================
-  // Component Initialization
+  // INIT
   // =========================
 
   ngOnInit(): void {
@@ -50,7 +59,7 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Load Posts
+  // LOAD POSTS
   // =========================
 
   public loadPosts(): void {
@@ -61,7 +70,32 @@ export class Post implements OnInit {
 
         next: (data: PostItem[]) => {
 
-          this.posts = data;
+          this.posts = data.map(post => {
+
+            return {
+              ...post,
+
+              likeCount: post.likeCount || 0,
+
+              commentCount: post.commentCount || 0,
+
+              isLikedByCurrentUser:
+                post.isLikedByCurrentUser || false,
+
+              comments: [],
+
+              commentsVisible: false,
+
+              commentsLoaded: false,
+
+              loadingComments: false,
+
+              addingComment: false,
+
+              commentText: ''
+            };
+
+          });
 
         },
 
@@ -72,6 +106,9 @@ export class Post implements OnInit {
             err
           );
 
+          this.errorMessage =
+            'Unable to load posts.';
+
         }
 
       });
@@ -79,12 +116,10 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Editor Input
+  // EDITOR INPUT
   // =========================
 
-  public onEditorInput(
-    event: Event
-  ): void {
+  public onEditorInput(event: Event): void {
 
     const element =
       event.target as HTMLDivElement;
@@ -95,10 +130,14 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Execute Editor Command
+  // FORMAT
   // =========================
 
   public format(command: string): void {
+
+    if (!this.editor) {
+      return;
+    }
 
     this.editor.nativeElement.focus();
 
@@ -112,16 +151,18 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Add Link
+  // ADD LINK
   // =========================
 
   public addLink(): void {
 
+    if (!this.editor) {
+      return;
+    }
+
     this.editor.nativeElement.focus();
 
-    const url = prompt(
-      'Enter URL:'
-    );
+    const url = prompt('Enter URL:');
 
     if (!url) {
       return;
@@ -138,10 +179,14 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Remove Formatting
+  // CLEAR FORMATTING
   // =========================
 
   public clearFormatting(): void {
+
+    if (!this.editor) {
+      return;
+    }
 
     this.editor.nativeElement.focus();
 
@@ -155,10 +200,14 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Update Editor Content
+  // UPDATE EDITOR
   // =========================
 
   private updateEditorContent(): void {
+
+    if (!this.editor) {
+      return;
+    }
 
     this.newPostContent =
       this.editor.nativeElement.innerHTML;
@@ -166,7 +215,7 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Handle Paste
+  // PASTE
   // =========================
 
   public onEditorPaste(
@@ -190,7 +239,7 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Create Post
+  // CREATE POST
   // =========================
 
   public onCreatePost(): void {
@@ -207,9 +256,9 @@ export class Post implements OnInit {
       return;
     }
 
-
     this.isSubmitting = true;
 
+    this.errorMessage = '';
 
     this.postService
       .createPost(content)
@@ -217,14 +266,38 @@ export class Post implements OnInit {
 
         next: (createdPost: PostItem) => {
 
-          // Add new post at the top
+          const post: PostItem = {
+
+            ...createdPost,
+
+            likeCount:
+              createdPost.likeCount || 0,
+
+            commentCount:
+              createdPost.commentCount || 0,
+
+            isLikedByCurrentUser:
+              createdPost.isLikedByCurrentUser || false,
+
+            comments: [],
+
+            commentsVisible: false,
+
+            commentsLoaded: false,
+
+            loadingComments: false,
+
+            addingComment: false,
+
+            commentText: ''
+
+          };
+
           this.posts = [
-            createdPost,
+            post,
             ...this.posts
           ];
 
-
-          // Clear editor
           this.newPostContent = '';
 
           if (this.editor) {
@@ -234,11 +307,9 @@ export class Post implements OnInit {
 
           }
 
-
           this.isSubmitting = false;
 
         },
-
 
         error: (err) => {
 
@@ -246,6 +317,9 @@ export class Post implements OnInit {
             'Failed to create post:',
             err
           );
+
+          this.errorMessage =
+            'Unable to create post.';
 
           this.isSubmitting = false;
 
@@ -256,7 +330,7 @@ export class Post implements OnInit {
 
 
   // =========================
-  // Track Posts
+  // TRACK POSTS
   // =========================
 
   public trackByPost(
@@ -266,4 +340,334 @@ export class Post implements OnInit {
 
     return post.id;
   }
+
+
+  // =========================
+  // LIKE POST
+  // =========================
+
+  public toggleLike(
+    post: PostItem
+  ): void {
+
+    if (
+      this.loadingLikePostId === post.id
+    ) {
+      return;
+    }
+
+    this.loadingLikePostId = post.id;
+
+    this.errorMessage = '';
+
+    this.postService
+      .toggleLike(post.id)
+      .subscribe({
+
+        next: (response) => {
+
+          post.isLikedByCurrentUser =
+            response.isLiked;
+
+          post.likeCount =
+            response.likeCount;
+
+          this.loadingLikePostId = null;
+
+        },
+
+        error: (error) => {
+
+          console.error(
+            'Like error:',
+            error
+          );
+
+          this.errorMessage =
+            'Unable to update like.';
+
+          this.loadingLikePostId = null;
+
+        }
+
+      });
+  }
+
+
+  // =========================
+  // TOGGLE COMMENTS
+  // =========================
+
+  public toggleComments(
+    post: PostItem
+  ): void {
+
+    post.commentsVisible =
+      !post.commentsVisible;
+
+    if (
+      post.commentsVisible &&
+      !post.commentsLoaded
+    ) {
+
+      this.loadComments(post);
+
+    }
+  }
+
+
+  // =========================
+  // LOAD COMMENTS
+  // =========================
+
+  public loadComments(
+    post: PostItem
+  ): void {
+
+    post.loadingComments = true;
+
+    this.postService
+      .getComments(post.id)
+      .subscribe({
+
+        next: (result) => {
+
+          post.comments =
+            result || [];
+
+          post.commentsLoaded =
+            true;
+
+          post.loadingComments =
+            false;
+
+        },
+
+        error: (error) => {
+
+          console.error(
+            'Comments error:',
+            error
+          );
+
+          post.loadingComments =
+            false;
+
+          this.errorMessage =
+            'Unable to load comments.';
+
+        }
+
+      });
+  }
+
+
+  // =========================
+  // ADD COMMENT
+  // =========================
+
+  public addComment(
+    post: PostItem
+  ): void {
+
+    const content =
+      post.commentText?.trim();
+
+    if (
+      !content ||
+      post.addingComment
+    ) {
+      return;
+    }
+
+    post.addingComment = true;
+
+    this.errorMessage = '';
+
+    this.postService
+      .addComment(
+        post.id,
+        content
+      )
+      .subscribe({
+
+        next: (comment) => {
+
+          if (!post.comments) {
+            post.comments = [];
+          }
+
+          post.comments.unshift(
+            comment
+          );
+
+          post.commentText = '';
+
+          post.commentCount =
+            (post.commentCount || 0) + 1;
+
+          post.commentsVisible =
+            true;
+
+          post.commentsLoaded =
+            true;
+
+          post.addingComment =
+            false;
+
+        },
+
+        error: (error) => {
+
+          console.error(
+            'Add comment error:',
+            error
+          );
+
+          this.errorMessage =
+            'Unable to add comment.';
+
+          post.addingComment =
+            false;
+
+        }
+
+      });
+  }
+
+
+  // =========================
+  // POST USER NAME
+  // =========================
+
+  public getPostUserName(
+    post: PostItem
+  ): string {
+
+    return (
+      (post as any).userName ||
+      (post as any).username ||
+      (post as any).authorName ||
+      'User'
+    );
+  }
+
+
+  // =========================
+  // POST INITIAL
+  // =========================
+
+  public getPostInitial(
+    post: PostItem
+  ): string {
+
+    const name =
+      this.getPostUserName(post);
+
+    return name
+      ? name.charAt(0).toUpperCase()
+      : '?';
+  }
+
+
+  // =========================
+  // POST DATE
+  // =========================
+
+  public getPostDate(
+    post: PostItem
+  ): string {
+
+    const date =
+      (post as any).createdAt;
+
+    return date || '';
+  }
+
+
+  // =========================
+  // COMMENT USER NAME
+  // =========================
+
+  public getCommentUserName(
+    comment: any
+  ): string {
+
+    return (
+      comment?.userName ||
+      comment?.username ||
+      comment?.senderUserName ||
+      comment?.authorName ||
+      'User'
+    );
+  }
+
+
+  // =========================
+  // COMMENT INITIAL
+  // =========================
+
+  public getCommentInitial(
+    comment: any
+  ): string {
+
+    const name =
+      this.getCommentUserName(
+        comment
+      );
+
+    return name
+      ? name.charAt(0).toUpperCase()
+      : '?';
+  }
+
+
+  // =========================
+  // COMMENT CONTENT
+  // =========================
+
+  public getCommentContent(
+    comment: any
+  ): string {
+
+    return (
+      comment?.content ||
+      comment?.commentText ||
+      comment?.message ||
+      ''
+    );
+  }
+
+
+  // =========================
+  // COMMENT DATE
+  // =========================
+
+  public getCommentDate(
+    comment: any
+  ): string {
+
+    return (
+      comment?.createdAt ||
+      comment?.commentedAt ||
+      ''
+    );
+  }
+
+
+  // =========================
+  // IMAGE FALLBACK
+  // =========================
+
+  public onImageError(
+    event: Event
+  ): void {
+
+    const image =
+      event.target as HTMLImageElement;
+
+    image.src =
+      'assets/default-profile.png';
+  }
+
 }
