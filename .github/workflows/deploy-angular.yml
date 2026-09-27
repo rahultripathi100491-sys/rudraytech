@@ -14,43 +14,51 @@ jobs:
 
     steps:
 
-      # -----------------------------
-      # Checkout
-      # -----------------------------
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # -----------------------------
-      # Setup Node
-      # -----------------------------
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: ChatApplication.Web/package-lock.json
 
 
-      # -----------------------------
+      # Check Angular project
+      - name: Check Angular files
+        run: |
+          echo "Repository:"
+          pwd
+          echo "Files:"
+          ls -la
+          echo "ChatApplication.Web:"
+          ls -la ChatApplication.Web
+
+
       # Install dependencies
-      # -----------------------------
       - name: Install dependencies
         working-directory: ChatApplication.Web
         run: npm ci
 
 
-      # -----------------------------
-      # Build Angular
-      # -----------------------------
+      # Build Angular Production
       - name: Build Angular Production
         working-directory: ChatApplication.Web
         run: npm run build -- --configuration production
 
 
-      # -----------------------------
+      # Check build output
+      - name: Check build output
+        run: |
+          echo "Build output:"
+          ls -la ChatApplication.Web/dist
+          ls -la ChatApplication.Web/dist/ChatApplication.Web
+          ls -la ChatApplication.Web/dist/ChatApplication.Web/browser
+
+
       # Deploy to InfinityFree
-      # -----------------------------
       - name: Deploy to InfinityFree
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -60,6 +68,6 @@ jobs:
           protocol: ftp
           port: 21
 
-          local-dir: ChatApplication.Web/dist/ChatApplication.Web/browser/
+          local-dir: ./ChatApplication.Web/dist/ChatApplication.Web/browser/
 
           server-dir: /htdocs/
