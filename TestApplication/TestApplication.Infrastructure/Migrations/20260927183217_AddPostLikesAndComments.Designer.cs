@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TestApplication.Infrastructure.AppDbContext;
 
@@ -11,9 +12,11 @@ using TestApplication.Infrastructure.AppDbContext;
 namespace TestApplication.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927183217_AddPostLikesAndComments")]
+    partial class AddPostLikesAndComments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -175,7 +178,7 @@ namespace TestApplication.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PostComments");
+                    b.ToTable("PostComment");
                 });
 
             modelBuilder.Entity("TestApplication.Domain.Entity.PostLike", b =>
@@ -200,7 +203,7 @@ namespace TestApplication.Infrastructure.Migrations
                     b.HasIndex("PostId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("PostLikes");
+                    b.ToTable("PostLike");
                 });
 
             modelBuilder.Entity("TestApplication.Domain.Entity.User", b =>

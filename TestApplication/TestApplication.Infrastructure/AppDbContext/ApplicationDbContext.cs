@@ -15,7 +15,8 @@ namespace TestApplication.Infrastructure.AppDbContext
         public DbSet<Message> Messages { get; set; }
         public DbSet<Post> Posts { get; set; }
         public DbSet<Friendship> Friendships { get; set; }
-
+        public DbSet<PostLike> PostLikes { get; set; }
+        public DbSet<PostComment> PostComments { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -33,6 +34,38 @@ namespace TestApplication.Infrastructure.AppDbContext
                 .WithMany()
                 .HasForeignKey(f => f.FriendId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PostLike>()
+                .HasOne(x => x.Post)
+                .WithMany(x => x.Likes)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PostLike>()
+                .HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PostComment>()
+                .HasOne(x => x.Post)
+                .WithMany(x => x.Comments)
+                .HasForeignKey(x => x.PostId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<PostComment>()
+                .HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // One like per user per post
+            modelBuilder.Entity<PostLike>()
+                .HasIndex(x => new
+                {
+                    x.PostId,
+                    x.UserId
+                })
+                .IsUnique();
         }
     }
 }

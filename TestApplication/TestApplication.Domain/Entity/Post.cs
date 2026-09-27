@@ -7,5 +7,9 @@
         public string UserName { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+        public ICollection<PostLike> Likes { get; set; }
+        = new List<PostLike>();
+        public ICollection<PostComment> Comments { get; set; }
+            = new List<PostComment>();
     }
 }

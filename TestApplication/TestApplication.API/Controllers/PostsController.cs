@@ -1,10 +1,10 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TestApplication.Application.Common.Command;
 using TestApplication.Application.Common.Query;
+using TestApplication.Domain.Entity;
 
 namespace TestApplication.API.Controllers
 {
@@ -37,6 +37,54 @@ namespace TestApplication.API.Controllers
             var createdPost = await _mediator.Send(command, cancellationToken);
 
             return Ok(createdPost);
+        }
+        [Authorize]
+        [HttpPost("{postId:guid}/like")]
+        public async Task<IActionResult> ToggleLike(Guid postId, CancellationToken cancellationToken)
+        {
+            var userIdClaim = User.FindFirst(
+                ClaimTypes.NameIdentifier);
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            if (!Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var result = await _mediator.Send(
+                new TogglePostLikeCommand(postId, userId), cancellationToken);
+
+            return Ok(result);
+        }
+        [Authorize]
+        [HttpPost("{postId:guid}/comments")]
+        public async Task<IActionResult> AddComment(Guid postId, [FromBody] AddCommentRequest request, CancellationToken cancellationToken)
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            if (!Guid.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized();
+            }
+
+
+            var result = await _mediator.Send(new AddCommentCommand(postId, userId, request.Content), cancellationToken);
+
+
+            return Ok(result);
+        }
+        [Authorize]
+        [HttpGet("{postId:guid}/comments")]
+        public async Task<IActionResult> GetComments(Guid postId, CancellationToken cancellationToken)
+        {
+            var result = await _mediator.Send(new GetPostCommentsQuery(postId), cancellationToken);
+
+            return Ok(result);
         }
     }
     public record CreatePostRequest(string Content);
