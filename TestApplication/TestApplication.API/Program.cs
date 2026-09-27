@@ -134,6 +134,7 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
+builder.Services.AddScoped<IFriendRepository, FriendRepository>();
 
 builder.Services.AddCors(options =>
 {

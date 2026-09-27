@@ -15,6 +15,7 @@ namespace TestApplication.Domain.Entity
         public bool IsEmailConfirmed { get; set; }
         public string? ProfileImage { get; set; }
         public bool IsActive { get; set; }
+        public DateTime JoinedDate { get; set; } = DateTime.UtcNow;
         public bool IsOnLine { get; set; }
         public DateTime? LastSeen { get; set; } = DateTime.UtcNow;
         public ICollection<ConversationMember> ConversationMembers { get; set; }
