@@ -14,60 +14,63 @@ jobs:
 
     steps:
 
-      # Checkout repository
+      # ==========================================
+      # 1. Checkout repository
+      # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # Setup Node.js
+      # ==========================================
+      # 2. Setup Node.js
+      # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
 
-      # Check Angular project
-      - name: Check Angular files
-        run: |
-          echo "Repository:"
-          pwd
-          echo "Files:"
-          ls -la
-          echo "ChatApplication.Web:"
-          ls -la ChatApplication.Web
-
-
-      # Install dependencies
+      # ==========================================
+      # 3. Install Angular dependencies
+      # ==========================================
       - name: Install dependencies
-        working-directory: ChatApplication.Web
+        working-directory: ./TestApplication/ChatApplication.Web
         run: npm ci
 
 
-      # Build Angular Production
+      # ==========================================
+      # 4. Build Angular production
+      # ==========================================
       - name: Build Angular Production
-        working-directory: ChatApplication.Web
+        working-directory: ./TestApplication/ChatApplication.Web
         run: npm run build -- --configuration production
 
 
-      # Check build output
+      # ==========================================
+      # 5. Check build output
+      # ==========================================
       - name: Check build output
         run: |
-          echo "Build output:"
-          ls -la ChatApplication.Web/dist
-          ls -la ChatApplication.Web/dist/ChatApplication.Web
-          ls -la ChatApplication.Web/dist/ChatApplication.Web/browser
+          echo "Angular build output:"
+          ls -la ./TestApplication/ChatApplication.Web/dist
+          echo ""
+          echo "Browser folder:"
+          ls -la ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
 
 
-      # Deploy to InfinityFree
+      # ==========================================
+      # 6. Deploy to InfinityFree
+      # ==========================================
       - name: Deploy to InfinityFree
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.INFINITY_FTP_HOST }}
           username: ${{ secrets.INFINITY_FTP_USERNAME }}
           password: ${{ secrets.INFINITY_FTP_PASSWORD }}
+
           protocol: ftp
           port: 21
 
-          local-dir: ./ChatApplication.Web/dist/ChatApplication.Web/browser/
+          local-dir: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/
 
           server-dir: /htdocs/
