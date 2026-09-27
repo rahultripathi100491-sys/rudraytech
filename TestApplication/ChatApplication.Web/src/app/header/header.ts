@@ -41,6 +41,8 @@ export class Header {
     this.authService.logout();
     this.userName = null;
     this.profilePic = null;
+    // Go to login
+    this.router.navigate(['/login']);
   }
 
   getTotalUnread(unread: Record<string, number>): number {

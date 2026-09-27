@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using TestApplication.Application.Common.Command;
-using TestApplication.Domain.Entity;
 using TestApplication.Infrastructure.Interface;
 
 namespace TestApplication.API.Hubs

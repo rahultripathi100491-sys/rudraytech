@@ -1,0 +1,554 @@
+<div class="friends-page">
+
+  <!-- =====================================================
+       FRIEND REQUESTS
+  ====================================================== -->
+
+  <section class="requests-container">
+
+    <!-- Header -->
+
+    <div class="header">
+
+      <div>
+
+        <h2>
+          Friend Requests
+        </h2>
+
+        <p>
+          People who want to connect with you
+        </p>
+
+      </div>
+
+    </div>
+
+
+    <!-- Loading -->
+
+    <div
+      *ngIf="loadingRequests"
+      class="loading">
+
+      Loading requests...
+
+    </div>
+
+
+    <!-- Error -->
+
+    <div
+      *ngIf="requestErrorMessage"
+      class="error">
+
+      {{ requestErrorMessage }}
+
+    </div>
+
+
+    <!-- Success -->
+
+    <div
+      *ngIf="requestSuccessMessage"
+      class="success">
+
+      {{ requestSuccessMessage }}
+
+    </div>
+
+
+    <!-- Requests -->
+
+    <div
+      *ngIf="
+        !loadingRequests &&
+        requests.length > 0
+      "
+      class="requests-list">
+
+      <div
+        *ngFor="let request of requests"
+        class="request-card">
+
+
+        <!-- Profile -->
+
+        <img
+          class="profile-image"
+          [src]="
+            request.profileImage ||
+            'assets/default-profile.png'
+          "
+          [alt]="request.name"
+          (error)="onImageError($event)"
+        />
+
+
+        <!-- User information -->
+
+        <div class="user-info">
+
+          <h3>
+            {{ request.name }}
+          </h3>
+
+          <p>
+            Sent you a friend request
+          </p>
+
+        </div>
+
+
+        <!-- Accept -->
+
+        <button
+          type="button"
+          class="accept-button"
+          [disabled]="
+            isAccepting(request.friendshipId)
+          "
+          (click)="acceptRequest(request)"
+        >
+
+          <span
+            *ngIf="
+              !isAccepting(request.friendshipId)
+            "
+          >
+            Accept
+          </span>
+
+          <span
+            *ngIf="
+              isAccepting(request.friendshipId)
+            "
+          >
+            Accepting...
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- Empty -->
+
+    <div
+      *ngIf="
+        !loadingRequests &&
+        requests.length === 0 &&
+        !requestErrorMessage
+      "
+      class="empty">
+
+      <div class="empty-icon">
+        👥
+      </div>
+
+      <h3>
+        No friend requests
+      </h3>
+
+      <p>
+        You don't have any pending friend requests.
+      </p>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =====================================================
+       FRIEND SUGGESTIONS
+  ====================================================== -->
+
+  <section class="friends-container">
+
+
+    <!-- Header -->
+
+    <div class="friends-header">
+
+      <div>
+
+        <h2>
+          People You May Know
+        </h2>
+
+        <p>
+          Connect with people you might know
+        </p>
+
+      </div>
+
+
+      <button
+        class="refresh-btn"
+        type="button"
+        (click)="loadSuggestions()"
+        [disabled]="loading">
+
+        <span *ngIf="!loading">
+          Refresh
+        </span>
+
+        <span *ngIf="loading">
+          Loading...
+        </span>
+
+      </button>
+
+    </div>
+
+
+    <!-- Loading -->
+
+    <div
+      *ngIf="loading"
+      class="loading-container">
+
+      <div class="spinner"></div>
+
+      <span>
+        Finding people for you...
+      </span>
+
+    </div>
+
+
+    <!-- Error -->
+
+    <div
+      *ngIf="errorMessage"
+      class="message error-message">
+
+      {{ errorMessage }}
+
+    </div>
+
+
+    <!-- Success -->
+
+    <div
+      *ngIf="successMessage"
+      class="message success-message">
+
+      {{ successMessage }}
+
+    </div>
+
+
+    <!-- Suggestions -->
+
+    <div
+      *ngIf="
+        !loading &&
+        suggestions.length > 0
+      "
+      class="friends-grid">
+
+      <div
+        class="friend-card"
+        *ngFor="let friend of suggestions">
+
+
+        <!-- Profile -->
+
+        <div class="profile-section">
+
+          <img
+            class="profile-image"
+            [src]="
+              friend.profileImage ||
+              'assets/default-profile.png'
+            "
+            [alt]="friend.name"
+            (error)="onImageError($event)"
+          />
+
+        </div>
+
+
+        <!-- User information -->
+
+        <div class="friend-info">
+
+          <h3>
+            {{ friend.name }}
+          </h3>
+
+
+          <p class="mutual-friends">
+
+            <span class="people-icon">
+              👥
+            </span>
+
+            {{ friend.mutualFriends }}
+
+            {{
+              friend.mutualFriends === 1
+                ? 'mutual friend'
+                : 'mutual friends'
+            }}
+
+          </p>
+
+        </div>
+
+
+        <!-- Add Friend -->
+
+        <button
+          type="button"
+          class="add-button"
+          [disabled]="
+            isLoading(friend.userId)
+          "
+          (click)="addFriend(friend)"
+        >
+
+          <span
+            *ngIf="isLoading(friend.userId)"
+            class="button-spinner">
+          </span>
+
+
+          <span
+            *ngIf="!isLoading(friend.userId)"
+          >
+            Add Friend
+          </span>
+
+
+          <span
+            *ngIf="isLoading(friend.userId)"
+          >
+            Sending...
+          </span>
+
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <!-- No Suggestions -->
+
+    <div
+      *ngIf="
+        !loading &&
+        suggestions.length === 0 &&
+        !errorMessage
+      "
+      class="empty-state">
+
+      <div class="empty-icon">
+        👥
+      </div>
+
+      <h3>
+        No suggestions available
+      </h3>
+
+      <p>
+        We couldn't find anyone to suggest right now.
+      </p>
+
+      <button
+        type="button"
+        class="retry-button"
+        (click)="loadSuggestions()">
+
+        Try Again
+
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+<div class="friends-container">
+
+  <!-- =====================================================
+       HEADER
+  ====================================================== -->
+
+  <div class="friends-header">
+
+    <div>
+      <h2>My Friends</h2>
+
+      <p>
+        People you are connected with
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="refresh-btn"
+      (click)="loadFriends()"
+      [disabled]="loadingFriends">
+
+      <span *ngIf="!loadingFriends">
+        Refresh
+      </span>
+
+      <span *ngIf="loadingFriends">
+        Loading...
+      </span>
+
+    </button>
+
+  </div>
+
+
+  <!-- =====================================================
+       LOADING
+  ====================================================== -->
+
+  <div
+    *ngIf="loadingFriends"
+    class="loading-container">
+
+    <div class="spinner"></div>
+
+    <span>
+      Loading your friends...
+    </span>
+
+  </div>
+
+
+  <!-- =====================================================
+       ERROR
+  ====================================================== -->
+
+  <div
+    *ngIf="friendsErrorMessage"
+    class="message error-message">
+
+    {{ friendsErrorMessage }}
+
+  </div>
+
+
+  <!-- =====================================================
+       SUCCESS
+  ====================================================== -->
+
+  <!-- <div
+    *ngIf="friendsSuccessMessage"
+    class="message success-message">
+
+    {{ friendsSuccessMessage }}
+
+  </div> -->
+
+
+  <!-- =====================================================
+       FRIEND LIST
+  ====================================================== -->
+
+  <div
+    *ngIf="
+      !loadingFriends &&
+      friends.length > 0
+    "
+    class="friends-grid">
+
+    <div
+      class="friend-card"
+      *ngFor="let friend of friends">
+
+
+      <!-- Profile -->
+
+      <div class="profile-section">
+
+        <img
+          class="profile-image"
+          [src]="
+            friend.profileImage ||
+            'assets/default-profile.png'
+          "
+          [alt]="friend.name"
+          (error)="onImageError($event)"
+        />
+
+      </div>
+
+
+      <!-- Friend Information -->
+
+      <div class="friend-info">
+
+        <h3>
+          {{ friend.name }}
+        </h3>
+
+        <p>
+          Friend
+        </p>
+
+      </div>
+
+
+      <!-- Optional action -->
+
+      <!-- <button
+        type="button"
+        class="profile-button"
+        (click)="viewProfile(friend)">
+
+        View Profile
+
+      </button> -->
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       EMPTY
+  ====================================================== -->
+
+  <div
+    *ngIf="
+      !loadingFriends &&
+      friends.length === 0 &&
+      !friendsErrorMessage
+    "
+    class="empty-state">
+
+    <div class="empty-icon">
+      👥
+    </div>
+
+    <h3>
+      No friends yet
+    </h3>
+
+    <p>
+      You haven't added any friends yet.
+    </p>
+
+    <button
+      type="button"
+      class="find-friends-button"
+      (click)="loadSuggestions()">
+
+      Find People
+
+    </button>
+
+  </div>
+
+</div>
