@@ -14,53 +14,55 @@ jobs:
 
     steps:
 
-      # ==========================================
-      # 1. Checkout repository
-      # ==========================================
+      # ==============================
+      # Checkout
+      # ==============================
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # ==========================================
-      # 2. Setup Node.js
-      # ==========================================
+      # ==============================
+      # Node.js
+      # ==============================
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
 
-      # ==========================================
-      # 3. Install Angular dependencies
-      # ==========================================
+      # ==============================
+      # Install dependencies
+      # ==============================
       - name: Install dependencies
         working-directory: ./TestApplication/ChatApplication.Web
         run: npm ci
 
 
-      # ==========================================
-      # 4. Build Angular production
-      # ==========================================
+      # ==============================
+      # Angular production build
+      # ==============================
       - name: Build Angular Production
         working-directory: ./TestApplication/ChatApplication.Web
         run: npm run build -- --configuration production
 
 
-      # ==========================================
-      # 5. Check build output
-      # ==========================================
-      - name: Check build output
+      # ==============================
+      # Verify build
+      # ==============================
+      - name: Verify Angular build
         run: |
-          echo "Angular build output:"
-          ls -la ./TestApplication/ChatApplication.Web/dist
-          echo ""
-          echo "Browser folder:"
-          ls -la ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
+          echo "Checking Angular production files..."
+
+          test -f ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/index.html
+
+          echo "Build successful!"
+          echo "Files:"
+          find ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser -maxdepth 1 -type f
 
 
-      # ==========================================
-      # 6. Deploy to InfinityFree
-      # ==========================================
+      # ==============================
+      # Deploy to InfinityFree
+      # ==============================
       - name: Deploy to InfinityFree
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -73,4 +75,4 @@ jobs:
 
           local-dir: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/
 
-          server-dir: /htdocs/
+          server-dir: /
