@@ -2,6 +2,7 @@
 
   <div class="register-card">
 
+    <!-- Header -->
     <div class="register-header">
 
       <div class="logo">
@@ -17,31 +18,88 @@
     </div>
 
 
-    <form (ngSubmit)="register()">
+    <!-- Registration Form -->
+    <form
+      [formGroup]="registerForm"
+      (ngSubmit)="register()"
+      novalidate
+    >
 
-      <!-- User Name -->
-
+      <!-- First Name -->
       <div class="form-group">
 
-        <label for="userName">
-          User Name
+        <label for="firstName">
+          First Name
         </label>
 
         <input
-          id="userName"
+          id="firstName"
           type="text"
-          name="userName"
-          [(ngModel)]="userName"
-          placeholder="Enter your name"
-          autocomplete="name"
-          required
+          formControlName="firstName"
+          placeholder="Enter your first name"
+          autocomplete="given-name"
         />
+
+        <div
+          class="error"
+          *ngIf="firstName.touched && firstName.invalid"
+        >
+
+          <small *ngIf="firstName.errors?.['required']">
+            First name is required.
+          </small>
+
+          <small *ngIf="firstName.errors?.['minlength']">
+            First name must be at least 2 characters.
+          </small>
+
+          <small *ngIf="firstName.errors?.['maxlength']">
+            First name cannot exceed 50 characters.
+          </small>
+
+        </div>
+
+      </div>
+
+
+      <!-- Last Name -->
+      <div class="form-group">
+
+        <label for="lastName">
+          Last Name
+        </label>
+
+        <input
+          id="lastName"
+          type="text"
+          formControlName="lastName"
+          placeholder="Enter your last name"
+          autocomplete="family-name"
+        />
+
+        <div
+          class="error"
+          *ngIf="lastName.touched && lastName.invalid"
+        >
+
+          <small *ngIf="lastName.errors?.['required']">
+            Last name is required.
+          </small>
+
+          <small *ngIf="lastName.errors?.['minlength']">
+            Last name must be at least 2 characters.
+          </small>
+
+          <small *ngIf="lastName.errors?.['maxlength']">
+            Last name cannot exceed 50 characters.
+          </small>
+
+        </div>
 
       </div>
 
 
       <!-- Email -->
-
       <div class="form-group">
 
         <label for="email">
@@ -51,18 +109,68 @@
         <input
           id="email"
           type="email"
-          name="email"
-          [(ngModel)]="email"
+          formControlName="email"
           placeholder="Enter your email"
           autocomplete="email"
-          required
         />
+
+        <div
+          class="error"
+          *ngIf="email.touched && email.invalid"
+        >
+
+          <small *ngIf="email.errors?.['required']">
+            Email is required.
+          </small>
+
+          <small *ngIf="email.errors?.['email']">
+            Please enter a valid email address.
+          </small>
+
+          <small *ngIf="email.errors?.['maxlength']">
+            Email cannot exceed 100 characters.
+          </small>
+
+        </div>
 
       </div>
 
+      <!-- Phone Number -->
+<div class="form-group">
+
+  <label for="phoneNumber">
+    Phone Number
+  </label>
+
+  <input
+    id="phoneNumber"
+    type="tel"
+    formControlName="phoneNumber"
+    placeholder="Enter your phone number"
+    autocomplete="tel"
+    inputmode="numeric"
+  />
+
+  <div
+    class="error"
+    *ngIf="phoneNumber.touched && phoneNumber.invalid"
+  >
+
+    <small *ngIf="phoneNumber.errors?.['required']">
+      Phone number is required.
+    </small>
+
+    <small *ngIf="phoneNumber.errors?.['pattern']">
+      Please enter a valid 10-digit phone number.
+    </small>
+
+  </div>
+
+</div>
+
+
 
       <!-- Password -->
-
       <div class="form-group">
 
         <label for="password">
@@ -72,18 +180,34 @@
         <input
           id="password"
           type="password"
-          name="password"
-          [(ngModel)]="password"
+          formControlName="password"
           placeholder="Create a password"
           autocomplete="new-password"
-          required
         />
+
+        <div
+          class="error"
+          *ngIf="password.touched && password.invalid"
+        >
+
+          <small *ngIf="password.errors?.['required']">
+            Password is required.
+          </small>
+
+          <small *ngIf="password.errors?.['minlength']">
+            Password must be at least 8 characters.
+          </small>
+
+          <small *ngIf="password.errors?.['maxlength']">
+            Password cannot exceed 100 characters.
+          </small>
+
+        </div>
 
       </div>
 
 
       <!-- Confirm Password -->
-
       <div class="form-group">
 
         <label for="confirmPassword">
@@ -93,18 +217,37 @@
         <input
           id="confirmPassword"
           type="password"
-          name="confirmPassword"
-          [(ngModel)]="confirmPassword"
+          formControlName="confirmPassword"
           placeholder="Confirm your password"
           autocomplete="new-password"
-          required
         />
+
+        <div
+          class="error"
+          *ngIf="confirmPassword.touched"
+        >
+
+          <small
+            *ngIf="confirmPassword.errors?.['required']"
+          >
+            Please confirm your password.
+          </small>
+
+          <small
+            *ngIf="
+              !confirmPassword.errors?.['required'] &&
+              password.value !== confirmPassword.value
+            "
+          >
+            Passwords do not match.
+          </small>
+
+        </div>
 
       </div>
 
 
       <!-- Terms -->
-
       <div class="terms">
 
         <label>
@@ -113,12 +256,13 @@
             type="checkbox"
             name="acceptTerms"
             [(ngModel)]="acceptTerms"
+            [ngModelOptions]="{ standalone: true }"
           />
 
           <span>
             I agree to the
             <a href="javascript:void(0)">
-              Terms & Conditions
+              Terms &amp; Conditions
             </a>
           </span>
 
@@ -127,18 +271,43 @@
       </div>
 
 
-      <!-- Register -->
+      <!-- Error Message -->
+      <div
+        class="error-message"
+        *ngIf="errorMessage"
+      >
+        {{ errorMessage }}
+      </div>
 
+
+      <!-- Success Message -->
+      <div
+        class="success-message"
+        *ngIf="successMessage"
+      >
+        {{ successMessage }}
+      </div>
+
+
+      <!-- Register Button -->
       <button
         type="submit"
         class="register-button"
+        [disabled]="isLoading"
       >
-        Create Account
+
+        <span *ngIf="!isLoading">
+          Create Account
+        </span>
+
+        <span *ngIf="isLoading">
+          Creating Account...
+        </span>
+
       </button>
 
 
       <!-- Login -->
-
       <div class="login-text">
 
         Already have an account?

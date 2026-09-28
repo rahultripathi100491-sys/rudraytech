@@ -28,5 +28,16 @@ namespace TestApplication.API.Controllers
 
             return Ok(result);
         }
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(RegisterUserCommand command)
+        {
+            var userId = await _mediator.Send(command);
+
+            return Ok(new
+            {
+                id = userId,
+                message = "User registered successfully"
+            });
+        }
     }
 }

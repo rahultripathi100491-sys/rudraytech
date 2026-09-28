@@ -262,7 +262,7 @@
             type="button"
             class="btn btn-primary"
             [disabled]="
-              !postItem.commentText?.trim() ||
+              !postItem.commentText ||
               postItem.addingComment
             "
             (click)="addComment(postItem)">

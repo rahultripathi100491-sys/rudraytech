@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { BASE_URL } from '../app.config';
+import { RegisterRequest } from '../models/registerrequest';
+import { RegisterResponse } from '../models/registerresponse';
 
 export interface LoginRequest {
   email?: string;
@@ -135,5 +137,11 @@ export class AuthService {
     sessionStorage.removeItem('userName');
     sessionStorage.removeItem('email');
     sessionStorage.removeItem('rememberMe');
+  }
+  register(request: RegisterRequest) {
+    return this.http.post<RegisterResponse>(
+      `${this.authUrl}/register`,
+      request
+    );
   }
 }
