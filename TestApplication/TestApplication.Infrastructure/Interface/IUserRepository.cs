@@ -10,5 +10,7 @@ namespace TestApplication.Infrastructure.Interface
         Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken);
         Task AddAsync(User user, CancellationToken cancellationToken);
         Task SaveChangesAsync(CancellationToken cancellationToken);
+        Task<User?> GetByIdAsync(Guid userId);
+        Task UpdateAsync(User user);
     }
 }

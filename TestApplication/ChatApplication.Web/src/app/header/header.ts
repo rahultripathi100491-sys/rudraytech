@@ -38,11 +38,33 @@ export class Header {
   }
 
   logout() {
-    this.authService.logout();
-    this.userName = null;
-    this.profilePic = null;
-    // Go to login
-    this.router.navigate(['/login']);
+    // this.authService.logout();
+    // this.userName = null;
+    // this.profilePic = null;
+    // // Go to login
+    // this.router.navigate(['/login']);
+    this.authService.logout().subscribe({
+
+    next: () => {
+
+      console.log('Logged out successfully');
+
+      this.router.navigate(['/login']);
+    },
+
+    error: (error) => {
+
+      console.error(
+        'Logout API error:',
+        error
+      );
+
+      // Local authentication is already
+      // cleared by finalize()
+      this.router.navigate(['/login']);
+    }
+
+  });
   }
 
   getTotalUnread(unread: Record<string, number>): number {

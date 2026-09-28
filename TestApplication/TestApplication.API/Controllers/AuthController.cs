@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TestApplication.Application.Common.Command;
 
 namespace TestApplication.API.Controllers
@@ -37,6 +38,26 @@ namespace TestApplication.API.Controllers
             {
                 id = userId,
                 message = "User registered successfully"
+            });
+        }
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!Guid.TryParse(userId, out var id))
+                return Unauthorized();
+
+            var result = await _mediator.Send(
+                new LogoutCommand(id));
+
+            if (!result)
+                return NotFound();
+
+            return Ok(new
+            {
+                message = "Logged out successfully."
             });
         }
     }

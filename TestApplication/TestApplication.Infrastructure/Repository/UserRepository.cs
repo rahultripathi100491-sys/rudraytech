@@ -29,6 +29,11 @@ namespace TestApplication.Infrastructure.Repository
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         }
 
+        public async Task<User?> GetByIdAsync(Guid userId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        }
+
         public async Task SaveChangesAsync(CancellationToken cancellationToken)
         {
             await _context.SaveChangesAsync(cancellationToken);
@@ -57,6 +62,13 @@ namespace TestApplication.Infrastructure.Repository
 
             await _context.SaveChangesAsync();
             return user;
+        }
+
+        public async Task UpdateAsync(User user)
+        {
+            _context.Users.Update(user);
+
+            await _context.SaveChangesAsync();
         }
     }
 }

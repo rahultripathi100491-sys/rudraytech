@@ -23,17 +23,11 @@ namespace TestApplication.Application.Common.Handler
         {
             var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
-            var test = _passwordHasher.HashPassword(user!, request!.Password);
-
             if (user == null)
             {
                 return null!; // User not found
             }
-            var verificationResult = _passwordHasher.VerifyHashedPassword(
-               user,
-               user.Password,
-               request.Password
-            );
+            var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.Password,request.Password);
             if (verificationResult == PasswordVerificationResult.Failed)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
