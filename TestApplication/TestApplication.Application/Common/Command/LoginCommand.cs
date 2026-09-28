@@ -7,4 +7,5 @@ namespace TestApplication.Application.Common.Command
     public record AuthResponseDto(string Token, DateTime Expiry);
     // Command Request
     public record LoginCommand(string Email, string Password) : IRequest<LoginResponse>;
+    public record LogoutCommand(Guid UserId) : IRequest<bool>;
 }
