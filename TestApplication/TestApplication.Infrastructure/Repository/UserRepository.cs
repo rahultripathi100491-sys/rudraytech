@@ -14,10 +14,24 @@ namespace TestApplication.Infrastructure.Repository
             _context = context;
         }
 
+        public async Task AddAsync(User user, CancellationToken cancellationToken)
+        {
+            await _context.Users.AddAsync(user, cancellationToken);
+        }
+
+        public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken)
+        {
+            return await _context.Users.AnyAsync(x => x.Email == email, cancellationToken);
+        }
+
         public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
-            return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        }
+
+        public async Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task<List<User>> SearchUsersAsync(string searchTerm, Guid currentUserId, CancellationToken cancellationToken)
