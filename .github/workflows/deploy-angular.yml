@@ -44,7 +44,7 @@ jobs:
 
 
       # =====================================================
-      # BUILD ANGULAR
+      # BUILD ANGULAR PRODUCTION
       # =====================================================
 
       - name: Build Angular Production
@@ -53,7 +53,7 @@ jobs:
 
 
       # =====================================================
-      # SHOW BUILD OUTPUT
+      # VERIFY ANGULAR BUILD
       # =====================================================
 
       - name: Verify Angular build
@@ -78,17 +78,26 @@ jobs:
 
           echo ""
           echo "Browser build files:"
-          find dist/ChatApplication.Web/browser -maxdepth 2 -type f | sort
+
+          find dist/ChatApplication.Web/browser \
+            -maxdepth 2 \
+            -type f \
+            | sort
 
 
       # =====================================================
-      # CREATE WEB.CONFIG
+      # CREATE .HTACCESS
       # =====================================================
-      # Required for Angular routing on IIS.
-      # If InfinityFree is using Apache, this can be replaced
-      # with .htaccess configuration.
+      # InfinityFree uses Apache.
+      # This allows Angular routes such as:
+      #
+      # /chat
+      # /friends
+      # /profile
+      #
+      # to load index.html.
 
-      - name: Create Angular SPA fallback
+      - name: Create Angular .htaccess
         working-directory: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
         run: |
 
@@ -97,12 +106,10 @@ jobs:
 
           RewriteBase /
 
-          # Do not rewrite existing files
           RewriteCond %{REQUEST_FILENAME} -f [OR]
           RewriteCond %{REQUEST_FILENAME} -d
           RewriteRule ^ - [L]
 
-          # Angular SPA fallback
           RewriteRule ^ index.html [L]
           EOF
 
@@ -120,13 +127,21 @@ jobs:
           echo "DEPLOYMENT DIRECTORY"
           echo "======================================"
 
-          test -f ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/index.html
+          DEPLOY_DIR="./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser"
 
-          ls -lah ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
+          test -f "$DEPLOY_DIR/index.html"
+
+          echo ""
+          echo "index.html:"
+          ls -lh "$DEPLOY_DIR/index.html"
+
+          echo ""
+          echo "All deployment files:"
+          find "$DEPLOY_DIR" -type f | sort
 
           echo ""
           echo "Total files:"
-          find ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser -type f | wc -l
+          find "$DEPLOY_DIR" -type f | wc -l
 
 
       # =====================================================
@@ -147,15 +162,15 @@ jobs:
 
           port: 21
 
+          # Angular build output
           local-dir: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/
 
-          server-dir: /
+          # InfinityFree website root
+          server-dir: /htdocs/
 
-          # Remove files from the server that no longer exist
-          # in the Angular build.
+          # Don't delete unrelated files on the server
           dangerous-clean-slate: false
 
-          # Upload everything
           exclude: |
             **/.git*
             **/.git*/**
