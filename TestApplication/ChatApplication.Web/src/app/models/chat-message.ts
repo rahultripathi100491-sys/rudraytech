@@ -5,6 +5,7 @@ export interface ChatMessage {
     content: string;
     sentAt?: string;
     sentAtUtc?: string;
+    status?: string | null;
 }
 export interface Conversation {
   id: string;

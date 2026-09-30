@@ -143,14 +143,20 @@
 
           </div>
 
-          <p class="last-message">
+          <!-- Last message + status -->
 
-            {{
-              conv.lastMessage ||
-              'Start conversation...'
-            }}
+          <div class="last-message-row">
 
-          </p>
+            <p class="last-message">
+
+              {{
+                conv.lastMessage ||
+                'Start conversation...'
+              }}
+
+            </p>
+
+          </div>
 
         </div>
 
@@ -296,23 +302,131 @@
 
           <div class="message-bubble">
 
+            <!-- ==========================================
+                 MESSAGE CONTENT
+                 ========================================== -->
+
             <p class="message-content">
               {{ msg.content }}
             </p>
 
-            <span class="message-timestamp">
 
-              {{
-                (msg.sentAt || msg.sentAtUtc)
-                  | date:'shortTime'
-              }}
+            <!-- ==========================================
+                 MESSAGE FOOTER
+                 ========================================== -->
 
-            </span>
+            <div class="message-footer">
+
+              <!-- MESSAGE TIME -->
+
+              <span class="message-timestamp">
+
+                {{
+                  (msg.sentAt || msg.sentAtUtc)
+                    | date:'shortTime'
+                }}
+
+              </span>
+
+
+              <!-- ========================================
+                   MESSAGE STATUS
+
+                   Only display status for messages
+                   sent by current user.
+                   ======================================== -->
+
+              <span
+                *ngIf="
+                  msg.senderUserId &&
+                  msg.senderUserId.toLowerCase() ===
+                  currentUserId.toLowerCase()
+                "
+                class="message-status"
+
+                [class.status-sending]="
+                  msg.status === 'sending'
+                "
+
+                [class.status-sent]="
+                  msg.status === 'sent'
+                "
+
+                [class.status-delivered]="
+                  msg.status === 'delivered'
+                "
+
+                [class.status-read]="
+                  msg.status === 'read'
+                "
+
+                [attr.title]="
+                  msg.status === 'sending'
+                    ? 'Sending'
+                    : msg.status === 'sent'
+                    ? 'Sent'
+                    : msg.status === 'delivered'
+                    ? 'Delivered'
+                    : msg.status === 'read'
+                    ? 'Read'
+                    : ''
+                ">
+
+
+                <!-- SENDING -->
+
+                <ng-container
+                  *ngIf="msg.status === 'sending'">
+
+                  ⏳
+
+                </ng-container>
+
+
+                <!-- SENT -->
+
+                <ng-container
+                  *ngIf="
+                    msg.status === 'sent' ||
+                    !msg.status
+                  ">
+
+                  ✓
+
+                </ng-container>
+
+
+                <!-- DELIVERED -->
+
+                <ng-container
+                  *ngIf="msg.status === 'delivered'">
+
+                  ✓✓
+
+                </ng-container>
+
+
+                <!-- READ -->
+
+                <ng-container
+                  *ngIf="msg.status === 'read'">
+
+                  ✓✓
+
+                </ng-container>
+
+              </span>
+
+            </div>
 
           </div>
 
         </div>
 
+
+        <!-- =================================================
+             NO MESSAGES
+             ================================================= -->
 
         <div
           *ngIf="
@@ -428,8 +542,6 @@
       </div>
 
 
-      <!-- CALL TYPE -->
-
       <h2>
 
         {{
@@ -454,8 +566,6 @@
 
       <div class="incoming-call-actions">
 
-        <!-- ACCEPT -->
-
         <button
           type="button"
           class="accept-call-button"
@@ -469,8 +579,6 @@
 
         </button>
 
-
-        <!-- DECLINE -->
 
         <button
           type="button"
@@ -499,21 +607,12 @@
     "
     class="fullscreen-call voice-call-screen">
 
-
-    <!-- ===================================================
-         REMOTE AUDIO
-         =================================================== -->
-
     <audio
       #remoteAudio
       autoplay
       playsinline>
     </audio>
 
-
-    <!-- ===================================================
-         VOICE CALL USER
-         =================================================== -->
 
     <div class="voice-call-content">
 
@@ -548,13 +647,7 @@
     </div>
 
 
-    <!-- ===================================================
-         VOICE CALL CONTROLS
-         =================================================== -->
-
     <div class="call-controls">
-
-      <!-- MICROPHONE -->
 
       <button
         type="button"
@@ -570,8 +663,6 @@
 
       </button>
 
-
-      <!-- END -->
 
       <button
         type="button"
@@ -602,11 +693,6 @@
     "
     class="fullscreen-call">
 
-
-    <!-- ===================================================
-         REMOTE VIDEO
-         =================================================== -->
-
     <video
       #remoteVideo
       class="remote-video"
@@ -614,10 +700,6 @@
       playsinline>
     </video>
 
-
-    <!-- ===================================================
-         REMOTE FALLBACK
-         =================================================== -->
 
     <div
       *ngIf="!remoteStream"
@@ -648,10 +730,6 @@
     </div>
 
 
-    <!-- ===================================================
-         REMOTE USER INFO
-         =================================================== -->
-
     <div class="remote-user-info">
 
       <div class="remote-user-avatar">
@@ -679,10 +757,6 @@
     </div>
 
 
-    <!-- ===================================================
-         LOCAL VIDEO
-         =================================================== -->
-
     <div class="local-video-wrapper">
 
       <video
@@ -700,13 +774,7 @@
     </div>
 
 
-    <!-- ===================================================
-         VIDEO CONTROLS
-         =================================================== -->
-
     <div class="call-controls">
-
-      <!-- MICROPHONE -->
 
       <button
         type="button"
@@ -723,8 +791,6 @@
       </button>
 
 
-      <!-- CAMERA -->
-
       <button
         type="button"
         class="call-control-button"
@@ -739,8 +805,6 @@
 
       </button>
 
-
-      <!-- END CALL -->
 
       <button
         type="button"

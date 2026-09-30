@@ -168,9 +168,7 @@ namespace TestApplication.API.Hubs
         // SEND MESSAGE
         // =========================================================
 
-        public async Task SendMessage(
-            string receiverUserId,
-            string content)
+        public async Task SendMessage(string receiverUserId, string content)
         {
             var currentUserIdClaim =
                 Context.User?
@@ -306,5 +304,186 @@ namespace TestApplication.API.Hubs
             await Clients.User(targetUserId)
                 .SendAsync("CallEnded");
         }
+
+        // =========================================================
+        // MARK MESSAGE DELIVERED
+        // =========================================================
+
+        public async Task MarkMessageDelivered(string messageId)
+        {
+            // -----------------------------------------------------
+            // CURRENT USER = RECEIVER
+            // -----------------------------------------------------
+
+            var currentUserIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (
+                string.IsNullOrWhiteSpace(
+                    currentUserIdClaim) ||
+                !Guid.TryParse(
+                    currentUserIdClaim,
+                    out var receiverId)
+            )
+            {
+                throw new HubException(
+                    "Unauthorized: Missing user identity claim."
+                );
+            }
+
+            // -----------------------------------------------------
+            // MESSAGE ID
+            // -----------------------------------------------------
+
+            if (!Guid.TryParse(
+                messageId,
+                out var messageGuid))
+            {
+                throw new HubException(
+                    "Invalid message ID."
+                );
+            }
+
+            // -----------------------------------------------------
+            // UPDATE DATABASE
+            // -----------------------------------------------------
+
+            var result =
+                await _mediator.Send(
+                    new MarkMessageDeliveredCommand(
+                        messageGuid,
+                        receiverId
+                    )
+                );
+
+            // -----------------------------------------------------
+            // NOTIFY SENDER
+            // -----------------------------------------------------
+
+            if (result != null)
+            {
+                await Clients.User(
+                    result.SenderUserId.ToString()
+                )
+                .SendAsync(
+                    "MessageStatusUpdated",
+                    new
+                    {
+                        messageId =
+                            result.Id,
+
+                        status = "delivered",
+
+                        deliveredAtUtc =
+                            result.DeliveredAtUtc
+                    }
+                );
+            }
+
+            Console.WriteLine(
+                $"📬 Message delivered: {messageGuid}"
+            );
+        }
+
+        // =========================================================
+        // MARK MESSAGE READ
+        // =========================================================
+
+        public async Task MarkMessageRead(
+            string messageId)
+        {
+            // -----------------------------------------------------
+            // CURRENT USER = RECEIVER
+            // -----------------------------------------------------
+
+            var currentUserIdClaim =
+                Context.User?
+                    .FindFirst(
+                        ClaimTypes.NameIdentifier)?
+                    .Value;
+
+            if (
+                string.IsNullOrWhiteSpace(
+                    currentUserIdClaim) ||
+                !Guid.TryParse(
+                    currentUserIdClaim,
+                    out var readerId)
+            )
+            {
+                throw new HubException(
+                    "Unauthorized: Missing user identity claim."
+                );
+            }
+
+            // -----------------------------------------------------
+            // MESSAGE ID
+            // -----------------------------------------------------
+
+            if (!Guid.TryParse(
+                messageId,
+                out var messageGuid))
+            {
+                throw new HubException(
+                    "Invalid message ID."
+                );
+            }
+
+            // -----------------------------------------------------
+            // UPDATE DATABASE
+            // -----------------------------------------------------
+
+            var result =
+                await _mediator.Send(
+                    new MarkMessageReadCommand(
+                        messageGuid,
+                        readerId
+                    )
+                );
+
+            // -----------------------------------------------------
+            // NOTIFY SENDER
+            // -----------------------------------------------------
+
+            if (result != null)
+            {
+                await Clients.User(
+                    result.SenderUserId.ToString()
+                )
+                .SendAsync(
+                    "MessageStatusUpdated",
+                    new
+                    {
+                        messageId =
+                            result.Id,
+
+                        status = "read",
+
+                        readAtUtc =
+                            result.ReadAtUtc
+                    }
+                );
+            }
+
+            Console.WriteLine(
+                $"👁 Message read: {messageGuid}"
+            );
+        }
+
+        // =========================================================
+        // TYPING
+        // =========================================================
+
+        //public async Task SendTyping(
+        //    string conversationId,
+        //    string userId)
+        //{
+        //    await Clients
+        //        .GroupExcept(
+        //            conversationId,
+        //            Context.ConnectionId)
+        //        .SendAsync(
+        //            "UserTyping",
+        //            userId
+        //        );
+        //}
     }
 }

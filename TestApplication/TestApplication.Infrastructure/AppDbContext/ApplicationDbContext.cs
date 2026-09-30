@@ -66,6 +66,17 @@ namespace TestApplication.Infrastructure.AppDbContext
                     x.UserId
                 })
                 .IsUnique();
+            modelBuilder.Entity<Message>()
+                .HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(x => x.Receiver)
+                .WithMany()
+                .HasForeignKey(x => x.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }
