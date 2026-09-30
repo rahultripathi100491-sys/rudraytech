@@ -22,11 +22,13 @@ import {
 } from '../services/chat';
 
 import {
-  ChatMessage,
   Conversation
 } from '../models/chat-message';
 
-import { CallService } from '../services/call.service';
+import {
+  CallService,
+  CallType
+} from '../services/call.service';
 
 import {
   SignalRService,
@@ -52,7 +54,10 @@ import { User } from '../models/user';
   styleUrls: ['./chat-window.css']
 })
 export class ChatWindowComponent
-  implements OnInit, OnDestroy, AfterViewChecked {
+  implements
+    OnInit,
+    OnDestroy,
+    AfterViewChecked {
 
 
   // =========================================================
@@ -70,18 +75,76 @@ export class ChatWindowComponent
 
 
   // =========================================================
+  // VIDEO / AUDIO ELEMENTS
+  // =========================================================
+
+  @ViewChild('localVideo')
+  localVideo?: ElementRef<HTMLVideoElement>;
+
+  @ViewChild('remoteVideo')
+  remoteVideo?: ElementRef<HTMLVideoElement>;
+
+  @ViewChild('remoteAudio')
+  remoteAudio?: ElementRef<HTMLAudioElement>;
+
+  @ViewChild('scrollContainer')
+  private scrollContainer!: ElementRef;
+
+
+  // =========================================================
   // CALL STATE
   // =========================================================
 
   public incomingCallUserId:
     string | null = null;
 
-  public incomingCallName:
-    string = '';
+  public incomingCallName =
+    '';
+
+  public incomingCallType:
+    CallType = 'video';
+
+  /*
+   * Main call type used internally by the component.
+   */
+  public activeCallType:
+    CallType | null = null;
+
+  /*
+   * Alias used by the HTML template.
+   *
+   * Your template currently checks:
+   *
+   * callType === 'voice'
+   * callType === 'video'
+   *
+   * Therefore this property is kept synchronized
+   * with activeCallType.
+   */
+  public callType:
+    CallType | null = null;
 
   public isCallActive$:
     Observable<boolean> =
     this.callService.isCallActive$;
+
+  public localStream:
+    MediaStream | null = null;
+
+  public remoteStream:
+    MediaStream | null = null;
+
+  public isStartingCall =
+    false;
+
+  public callStatus =
+    '';
+
+  public isMicrophoneMuted =
+    false;
+
+  public isCameraOff =
+    false;
 
 
   // =========================================================
@@ -103,8 +166,7 @@ export class ChatWindowComponent
   public activeTargetName =
     '';
 
-  public currentUserId:
-    string =
+  public currentUserId =
     localStorage.getItem('userId') || '';
 
   public newMessageText =
@@ -113,7 +175,7 @@ export class ChatWindowComponent
   public isSending =
     false;
 
-  public isLogin: boolean =
+  public isLogin =
     localStorage.getItem('isLogin') === 'true';
 
 
@@ -126,15 +188,7 @@ export class ChatWindowComponent
 
 
   // =========================================================
-  // SCROLL
-  // =========================================================
-
-  @ViewChild('scrollContainer')
-  private scrollContainer!: ElementRef;
-
-
-  // =========================================================
-  // OBSERVABLES
+  // CONVERSATIONS
   // =========================================================
 
   public conversations$:
@@ -157,7 +211,7 @@ export class ChatWindowComponent
   async ngOnInit(): Promise<void> {
 
     // -------------------------------------------------------
-    // START SIGNALR
+    // SignalR
     // -------------------------------------------------------
 
     try {
@@ -165,28 +219,24 @@ export class ChatWindowComponent
       await this.signalRService
         .startConnection();
 
-      console.log(
-        'SignalR ready for presence.'
-      );
-
     } catch (error) {
 
       console.error(
-        'Failed to start SignalR:',
+        'SignalR connection failed:',
         error
       );
     }
 
 
     // -------------------------------------------------------
-    // LOAD USERS
+    // Users
     // -------------------------------------------------------
 
     await this.loadUsers();
 
 
     // -------------------------------------------------------
-    // USER ONLINE
+    // Online
     // -------------------------------------------------------
 
     this.subscriptions.add(
@@ -194,15 +244,10 @@ export class ChatWindowComponent
       this.signalRService
         .userOnline$
         .subscribe(
-          (user: UserOnlineEvent) => {
-
-            console.log(
-              '🟢 USER ONLINE:',
-              user
-            );
+          (event: UserOnlineEvent) => {
 
             this.setUserOnline(
-              user.userId
+              event.userId
             );
           }
         )
@@ -210,7 +255,7 @@ export class ChatWindowComponent
 
 
     // -------------------------------------------------------
-    // USER OFFLINE
+    // Offline
     // -------------------------------------------------------
 
     this.subscriptions.add(
@@ -219,11 +264,6 @@ export class ChatWindowComponent
         .userOffline$
         .subscribe(
           (event: UserOfflineEvent) => {
-
-            console.log(
-              '⚪ USER OFFLINE:',
-              event
-            );
 
             this.setUserOffline(
               event.userId,
@@ -235,12 +275,13 @@ export class ChatWindowComponent
 
 
     // -------------------------------------------------------
-    // CHAT MESSAGE CHANGES
+    // Chat messages
     // -------------------------------------------------------
 
     this.subscriptions.add(
 
-      this.chatService.activeMessages$
+      this.chatService
+        .activeMessages$
         .subscribe(() => {
 
           setTimeout(() => {
@@ -253,94 +294,184 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
-    // INCOMING CALL USER ID
-    // -------------------------------------------------------
+    // =======================================================
+    // INCOMING CALL
+    // =======================================================
 
     this.subscriptions.add(
 
-      this.callService.incomingCall$
-        .subscribe((fromUserId) => {
+      this.callService
+        .incomingCall$
+        .subscribe(userId => {
 
           this.incomingCallUserId =
-            fromUserId;
+            userId;
 
+          if (userId) {
+
+            this.callStatus =
+              'Incoming call...';
+          }
         })
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // INCOMING CALL NAME
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
-      this.callService.incomingCallName$
-        .subscribe((name) => {
+      this.callService
+        .incomingCallName$
+        .subscribe(name => {
 
           this.incomingCallName =
             name || 'Unknown user';
-
         })
     );
 
 
-    // -------------------------------------------------------
-    // CALL ACCEPTED
-    // -------------------------------------------------------
+    // =======================================================
+    // INCOMING CALL TYPE
+    // =======================================================
 
     this.subscriptions.add(
 
-      this.callService.callAccepted$
-        .subscribe((userId) => {
+      this.callService
+        .incomingCallType$
+        .subscribe(type => {
+
+          if (type) {
+
+            this.incomingCallType =
+              type;
+          }
+        })
+    );
+
+
+    // =======================================================
+    // LOCAL STREAM
+    // =======================================================
+
+    this.subscriptions.add(
+
+      this.callService
+        .localStream$
+        .subscribe(stream => {
+
+          this.localStream =
+            stream;
+
+          setTimeout(() => {
+
+            this.attachMedia();
+
+          });
+        })
+    );
+
+
+    // =======================================================
+    // REMOTE STREAM
+    // =======================================================
+
+    this.subscriptions.add(
+
+      this.callService
+        .remoteStream$
+        .subscribe(stream => {
+
+          this.remoteStream =
+            stream;
+
+          setTimeout(() => {
+
+            this.attachMedia();
+
+          });
+        })
+    );
+
+
+    // =======================================================
+    // CALL ACCEPTED
+    // =======================================================
+
+    this.subscriptions.add(
+
+      this.callService
+        .callAccepted$
+        .subscribe(userId => {
 
           if (!userId) {
             return;
           }
 
-          console.log(
-            'Call accepted by:',
-            userId
-          );
-
           this.activeTargetUserId =
             userId;
 
+          this.incomingCallUserId =
+            null;
+
+          this.incomingCallName =
+            '';
+
+          this.callStatus =
+            this.activeCallType === 'voice'
+              ? 'Voice call connecting...'
+              : 'Video call connecting...';
+
         })
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL REJECTED
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
-      this.callService.callRejected$
-        .subscribe((userId) => {
+      this.callService
+        .callRejected$
+        .subscribe(() => {
 
-          console.log(
-            'Call rejected by:',
-            userId
-          );
+          this.callStatus =
+            'Call declined';
+
+          this.stopMedia();
 
         })
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL ENDED
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
-      this.callService.callEnded$
-        .subscribe((userId) => {
+      this.callService
+        .callEnded$
+        .subscribe(() => {
 
-          console.log(
-            'Call ended by:',
-            userId
-          );
+          this.callStatus =
+            'Call ended';
+
+          this.stopMedia();
+
+          this.incomingCallUserId =
+            null;
+
+          this.incomingCallName =
+            '';
+
+          this.activeCallType =
+            null;
+
+          this.callType =
+            null;
 
         })
     );
@@ -353,20 +484,13 @@ export class ChatWindowComponent
 
   private async loadUsers(): Promise<void> {
 
-    /*
-     * Your conversations are currently loaded
-     * through ChatService.
-     *
-     * Do NOT load conversation history here because
-     * there may not be an activeTargetUserId yet.
-     *
-     * If you have a UserService.getUsers(), put it here.
-     */
+    // Keep your existing user loading logic here.
+
   }
 
 
   // =========================================================
-  // USER ONLINE
+  // ONLINE
   // =========================================================
 
   private setUserOnline(
@@ -377,11 +501,6 @@ export class ChatWindowComponent
       return;
     }
 
-
-    // -------------------------------------------------------
-    // Update users array if user exists
-    // -------------------------------------------------------
-
     const user =
       this.users.find(
         x =>
@@ -389,27 +508,16 @@ export class ChatWindowComponent
           String(userId)
       );
 
-
     if (user) {
 
-      user.isOnLine = true;
-
-      console.log(
-        `🟢 ${user.firstName} ${user.lastName} is online`
-      );
-
-    } else {
-
-      console.log(
-        '🟢 User is online:',
-        userId
-      );
+      user.isOnLine =
+        true;
     }
   }
 
 
   // =========================================================
-  // USER OFFLINE
+  // OFFLINE
   // =========================================================
 
   private setUserOffline(
@@ -421,7 +529,6 @@ export class ChatWindowComponent
       return;
     }
 
-
     const user =
       this.users.find(
         x =>
@@ -429,35 +536,22 @@ export class ChatWindowComponent
           String(userId)
       );
 
-
     if (user) {
 
-      user.isOnLine = false;
-
+      user.isOnLine =
+        false;
 
       if (lastSeen) {
 
         user.lastSeen =
           lastSeen;
       }
-
-
-      console.log(
-        `⚪ ${user.firstName} ${user.lastName} is offline`
-      );
-
-    } else {
-
-      console.log(
-        '⚪ User is offline:',
-        userId
-      );
     }
   }
 
 
   // =========================================================
-  // CHECK USER ONLINE
+  // USER ONLINE CHECK
   // =========================================================
 
   public isUserOnline(
@@ -468,22 +562,16 @@ export class ChatWindowComponent
       return false;
     }
 
-
     return this.signalRService
       .isUserOnline(userId);
   }
 
-
-  // =========================================================
-  // GET ACTIVE USER ONLINE STATUS
-  // =========================================================
 
   public isActiveUserOnline(): boolean {
 
     if (!this.activeTargetUserId) {
       return false;
     }
-
 
     return this.signalRService
       .isUserOnline(
@@ -500,6 +588,500 @@ export class ChatWindowComponent
 
     this.scrollToBottom();
 
+    this.attachMedia();
+
+  }
+
+
+  // =========================================================
+  // ATTACH MEDIA
+  // =========================================================
+
+  private attachMedia(): void {
+
+    // -------------------------------------------------------
+    // LOCAL VIDEO
+    // -------------------------------------------------------
+
+    if (
+      this.localVideo?.nativeElement &&
+      this.localStream &&
+      this.activeCallType === 'video'
+    ) {
+
+      const video =
+        this.localVideo.nativeElement;
+
+      if (
+        video.srcObject !==
+        this.localStream
+      ) {
+
+        video.srcObject =
+          this.localStream;
+      }
+
+      video.muted =
+        true;
+
+      video.autoplay =
+        true;
+
+      video.playsInline =
+        true;
+
+      video.play()
+        .catch(() => {});
+    }
+
+
+    // -------------------------------------------------------
+    // REMOTE VIDEO
+    // -------------------------------------------------------
+
+    if (
+      this.remoteVideo?.nativeElement &&
+      this.remoteStream &&
+      this.activeCallType === 'video'
+    ) {
+
+      const video =
+        this.remoteVideo.nativeElement;
+
+      if (
+        video.srcObject !==
+        this.remoteStream
+      ) {
+
+        video.srcObject =
+          this.remoteStream;
+      }
+
+      video.autoplay =
+        true;
+
+      video.playsInline =
+        true;
+
+      video.muted =
+        false;
+
+      video.play()
+        .catch(() => {});
+    }
+
+
+    // -------------------------------------------------------
+    // REMOTE AUDIO
+    // -------------------------------------------------------
+
+    if (
+      this.remoteAudio?.nativeElement &&
+      this.remoteStream &&
+      this.activeCallType === 'voice'
+    ) {
+
+      const audio =
+        this.remoteAudio.nativeElement;
+
+      if (
+        audio.srcObject !==
+        this.remoteStream
+      ) {
+
+        audio.srcObject =
+          this.remoteStream;
+      }
+
+      audio.autoplay =
+        true;
+
+      audio.controls =
+        false;
+
+      audio.volume =
+        1;
+
+      audio.play()
+        .catch(error => {
+
+          console.warn(
+            'Remote audio autoplay blocked:',
+            error
+          );
+
+        });
+    }
+  }
+
+
+  // =========================================================
+  // START VIDEO CALL
+  // =========================================================
+
+  public async startCall(): Promise<void> {
+
+    if (!this.activeTargetUserId) {
+      return;
+    }
+
+    if (this.isStartingCall) {
+      return;
+    }
+
+    this.isStartingCall =
+      true;
+
+    this.activeCallType =
+      'video';
+
+    this.callType =
+      'video';
+
+    this.callStatus =
+      'Calling...';
+
+
+    try {
+
+      await this.callService
+        .startCall(
+          this.activeTargetUserId
+        );
+
+    } catch (error) {
+
+      console.error(
+        'Video call failed:',
+        error
+      );
+
+      this.stopMedia();
+
+      this.activeCallType =
+        null;
+
+      this.callType =
+        null;
+
+      this.callStatus =
+        'Unable to start video call.';
+
+    } finally {
+
+      this.isStartingCall =
+        false;
+
+    }
+  }
+
+
+  // =========================================================
+  // START VOICE CALL
+  // =========================================================
+
+  public async startVoiceCall(): Promise<void> {
+
+    if (!this.activeTargetUserId) {
+      return;
+    }
+
+    if (this.isStartingCall) {
+      return;
+    }
+
+    this.isStartingCall =
+      true;
+
+    this.activeCallType =
+      'voice';
+
+    this.callType =
+      'voice';
+
+    this.callStatus =
+      'Calling...';
+
+
+    try {
+
+      await this.callService
+        .startVoiceCall(
+          this.activeTargetUserId
+        );
+
+    } catch (error) {
+
+      console.error(
+        'Voice call failed:',
+        error
+      );
+
+      this.stopMedia();
+
+      this.activeCallType =
+        null;
+
+      this.callType =
+        null;
+
+      this.callStatus =
+        'Unable to start voice call.';
+
+    } finally {
+
+      this.isStartingCall =
+        false;
+
+    }
+  }
+
+
+  // =========================================================
+  // ACCEPT INCOMING CALL
+  // =========================================================
+
+  public async acceptIncomingCall(): Promise<void> {
+
+    if (!this.incomingCallUserId) {
+      return;
+    }
+
+    const callerId =
+      this.incomingCallUserId;
+
+
+    this.activeTargetUserId =
+      callerId;
+
+    this.activeTargetName =
+      this.incomingCallName ||
+      'Caller';
+
+
+    this.activeCallType =
+      this.incomingCallType;
+
+    this.callType =
+      this.incomingCallType;
+
+
+    try {
+
+      this.callStatus =
+        this.activeCallType === 'voice'
+          ? 'Connecting voice call...'
+          : 'Connecting video call...';
+
+
+      /*
+       * IMPORTANT:
+       *
+       * Do not request microphone/camera here.
+       *
+       * ReceiveOffer in CallService creates the
+       * WebRTC connection and requests the correct
+       * media after the call has been accepted.
+       */
+
+      await this.callService
+        .acceptCall(
+          callerId
+        );
+
+
+      this.incomingCallUserId =
+        null;
+
+      this.incomingCallName =
+        '';
+
+    } catch (error) {
+
+      console.error(
+        'Accept call failed:',
+        error
+      );
+
+      this.callStatus =
+        'Unable to accept call.';
+
+    }
+  }
+
+
+  // =========================================================
+  // REJECT
+  // =========================================================
+
+  public async rejectIncomingCall(): Promise<void> {
+
+    if (!this.incomingCallUserId) {
+      return;
+    }
+
+    const callerId =
+      this.incomingCallUserId;
+
+
+    try {
+
+      await this.callService
+        .rejectCall(
+          callerId
+        );
+
+    } catch (error) {
+
+      console.error(
+        'Reject call failed:',
+        error
+      );
+
+    }
+
+
+    this.incomingCallUserId =
+      null;
+
+    this.incomingCallName =
+      '';
+
+    this.callStatus =
+      '';
+  }
+
+
+  // =========================================================
+  // MICROPHONE
+  // =========================================================
+
+  public toggleMicrophone(): void {
+
+    const enabled =
+      this.callService
+        .toggleMicrophone();
+
+    this.isMicrophoneMuted =
+      !enabled;
+  }
+
+
+  // =========================================================
+  // CAMERA
+  // =========================================================
+
+  public toggleCamera(): void {
+
+    const enabled =
+      this.callService
+        .toggleCamera();
+
+    this.isCameraOff =
+      !enabled;
+  }
+
+
+  // =========================================================
+  // END CALL
+  // =========================================================
+
+  public async endCall(): Promise<void> {
+
+    try {
+
+      await this.callService
+        .endCall();
+
+    } catch (error) {
+
+      console.error(
+        'End call failed:',
+        error
+      );
+
+    } finally {
+
+      this.stopMedia();
+
+      this.activeCallType =
+        null;
+
+      this.callType =
+        null;
+
+      this.callStatus =
+        '';
+
+    }
+  }
+
+
+  // =========================================================
+  // STOP MEDIA
+  // =========================================================
+
+  private stopMedia(): void {
+
+    if (this.localStream) {
+
+      this.localStream
+        .getTracks()
+        .forEach(track => {
+
+          track.stop();
+
+        });
+
+      this.localStream =
+        null;
+    }
+
+
+    if (this.remoteStream) {
+
+      this.remoteStream
+        .getTracks()
+        .forEach(track => {
+
+          track.stop();
+
+        });
+
+      this.remoteStream =
+        null;
+    }
+
+
+    if (this.localVideo?.nativeElement) {
+
+      this.localVideo.nativeElement
+        .srcObject = null;
+    }
+
+
+    if (this.remoteVideo?.nativeElement) {
+
+      this.remoteVideo.nativeElement
+        .srcObject = null;
+    }
+
+
+    if (this.remoteAudio?.nativeElement) {
+
+      this.remoteAudio.nativeElement
+        .pause();
+
+      this.remoteAudio.nativeElement
+        .srcObject = null;
+    }
+
+
+    this.isMicrophoneMuted =
+      false;
+
+    this.isCameraOff =
+      false;
   }
 
 
@@ -509,32 +1091,32 @@ export class ChatWindowComponent
 
   public openNewChatModal(): void {
 
-    this.showNewChatModal = true;
+    this.showNewChatModal =
+      true;
 
-    this.searchQuery = '';
+    this.searchQuery =
+      '';
 
-    this.searchResults = [];
-
+    this.searchResults =
+      [];
   }
 
-
-  // =========================================================
-  // CLOSE NEW CHAT
-  // =========================================================
 
   public closeNewChatModal(): void {
 
-    this.showNewChatModal = false;
+    this.showNewChatModal =
+      false;
 
-    this.searchQuery = '';
+    this.searchQuery =
+      '';
 
-    this.searchResults = [];
-
+    this.searchResults =
+      [];
   }
 
 
   // =========================================================
-  // SEARCH USERS
+  // SEARCH
   // =========================================================
 
   public onSearchUsers(): void {
@@ -542,34 +1124,34 @@ export class ChatWindowComponent
     const query =
       this.searchQuery.trim();
 
-
     if (!query) {
 
-      this.searchResults = [];
+      this.searchResults =
+        [];
 
       return;
     }
-
 
     this.chatService
       .searchUsers(query)
       .subscribe({
 
-        next: (results) => {
+        next: results => {
 
           this.searchResults =
             results || [];
 
         },
 
-        error: (error) => {
+        error: error => {
 
           console.error(
-            'Failed to search users:',
+            'User search failed:',
             error
           );
 
-          this.searchResults = [];
+          this.searchResults =
+            [];
 
         }
 
@@ -590,10 +1172,8 @@ export class ChatWindowComponent
       return;
     }
 
-
     this.activeTargetUserId =
       targetUserId;
-
 
     if (targetName) {
 
@@ -601,7 +1181,6 @@ export class ChatWindowComponent
         targetName;
 
     }
-
 
     this.chatService
       .loadConversationHistory(
@@ -623,13 +1202,11 @@ export class ChatWindowComponent
       return;
     }
 
-
     this.activeTargetUserId =
       targetUserId;
 
     this.activeTargetName =
       targetName || 'Chat';
-
 
     this.chatService
       .loadConversationHistory(
@@ -639,7 +1216,7 @@ export class ChatWindowComponent
 
 
   // =========================================================
-  // SELECT USER AND START CHAT
+  // SELECT USER
   // =========================================================
 
   public selectUserAndStartChat(
@@ -650,16 +1227,13 @@ export class ChatWindowComponent
       return;
     }
 
-
     this.activeTargetUserId =
       user.id;
 
     this.activeTargetName =
       user.name || 'User';
 
-
     this.closeNewChatModal();
-
 
     this.chatService
       .loadConversationHistory(
@@ -677,7 +1251,6 @@ export class ChatWindowComponent
     const message =
       this.newMessageText.trim();
 
-
     if (
       !message ||
       !this.activeTargetUserId ||
@@ -686,15 +1259,14 @@ export class ChatWindowComponent
       return;
     }
 
-
     const targetUserId =
       this.activeTargetUserId;
 
+    this.newMessageText =
+      '';
 
-    this.newMessageText = '';
-
-    this.isSending = true;
-
+    this.isSending =
+      true;
 
     try {
 
@@ -707,18 +1279,17 @@ export class ChatWindowComponent
     } catch (error) {
 
       console.error(
-        'Failed to dispatch message:',
+        'Send message failed:',
         error
       );
-
 
       this.newMessageText =
         message;
 
     } finally {
 
-      this.isSending = false;
-
+      this.isSending =
+        false;
 
       setTimeout(() => {
 
@@ -742,158 +1313,69 @@ export class ChatWindowComponent
         return;
       }
 
-
       const element =
         this.scrollContainer.nativeElement;
-
 
       element.scrollTop =
         element.scrollHeight;
 
     } catch {
-
       // Ignore
-
     }
   }
 
 
   // =========================================================
-  // START CALL
+  // AVATAR COLOR
   // =========================================================
 
-  public async startCall(): Promise<void> {
+  public getAvatarColor(
+    text: string
+  ): string {
 
-    if (!this.activeTargetUserId) {
-
-      console.warn(
-        'No active user selected.'
-      );
-
-      return;
+    if (!text) {
+      return '#e5e7eb';
     }
 
+    const colors = [
+      '#EF4444',
+      '#F97316',
+      '#F59E0B',
+      '#EAB308',
+      '#84CC16',
+      '#22C55E',
+      '#10B981',
+      '#14B8A6',
+      '#06B6D4',
+      '#0EA5E9',
+      '#3B82F6',
+      '#6366F1',
+      '#8B5CF6',
+      '#A855F7',
+      '#D946EF',
+      '#EC4899',
+      '#F43F5E'
+    ];
 
-    try {
+    let hash = 0;
 
-      console.log(
-        '📞 Calling:',
-        this.activeTargetUserId
-      );
+    for (
+      let i = 0;
+      i < text.length;
+      i++
+    ) {
 
+      hash =
+        text.charCodeAt(i) +
+        ((hash << 5) - hash);
 
-      await this.callService
-        .startCall(
-          this.activeTargetUserId
-        );
-
-    } catch (error) {
-
-      console.error(
-        'Failed to start call:',
-        error
-      );
-    }
-  }
-
-
-  // =========================================================
-  // ACCEPT INCOMING CALL
-  // =========================================================
-
-  public async acceptIncomingCall(): Promise<void> {
-
-    if (!this.incomingCallUserId) {
-      return;
-    }
-
-
-    const callerId =
-      this.incomingCallUserId;
-
-
-    const callerName =
-      this.incomingCallName ||
-      'Caller';
-
-
-    this.activeTargetUserId =
-      callerId;
-
-    this.activeTargetName =
-      callerName;
-
-
-    try {
-
-      await this.callService
-        .acceptCall(
-          callerId
-        );
-
-    } catch (error) {
-
-      console.error(
-        'Failed to accept call:',
-        error
-      );
-    }
-  }
-
-
-  // =========================================================
-  // REJECT INCOMING CALL
-  // =========================================================
-
-  public async rejectIncomingCall(): Promise<void> {
-
-    if (!this.incomingCallUserId) {
-      return;
     }
 
+    const index =
+      Math.abs(hash) %
+      colors.length;
 
-    try {
-
-      await this.callService
-        .rejectCall(
-          this.incomingCallUserId
-        );
-
-    } catch (error) {
-
-      console.error(
-        'Failed to reject call:',
-        error
-      );
-    }
-
-
-    this.incomingCallUserId =
-      null;
-
-    this.incomingCallName =
-      '';
-  }
-
-
-  // =========================================================
-  // END CALL
-  // =========================================================
-
-  public async endCall(): Promise<void> {
-
-    try {
-
-      await this.callService
-        .endCall();
-
-    } catch (error) {
-
-      console.error(
-        'Failed to end call:',
-        error
-      );
-    }
+    return colors[index];
   }
 
 
@@ -903,45 +1385,9 @@ export class ChatWindowComponent
 
   ngOnDestroy(): void {
 
+    this.stopMedia();
+
     this.subscriptions.unsubscribe();
 
   }
-  getAvatarColor(text: string): string {
-  if (!text) {
-    return '#e5e7eb';
-  }
-
-  const colors = [
-    '#EF4444', // red
-    '#F97316', // orange
-    '#F59E0B', // amber
-    '#EAB308', // yellow
-    '#84CC16', // lime
-    '#22C55E', // green
-    '#10B981', // emerald
-    '#14B8A6', // teal
-    '#06B6D4', // cyan
-    '#0EA5E9', // sky
-    '#3B82F6', // blue
-    '#6366F1', // indigo
-    '#8B5CF6', // violet
-    '#A855F7', // purple
-    '#D946EF', // fuchsia
-    '#EC4899', // pink
-    '#F43F5E'  // rose
-  ];
-
-  let hash = 0;
-
-  for (let i = 0; i < text.length; i++) {
-    hash =
-      text.charCodeAt(i) +
-      ((hash << 5) - hash);
-  }
-
-  const index =
-    Math.abs(hash) % colors.length;
-
-  return colors[index];
-}
 }
