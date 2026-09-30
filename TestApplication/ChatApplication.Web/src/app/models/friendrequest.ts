@@ -4,4 +4,6 @@ export interface FriendRequest {
   name: string;
   profileImage?: string;
   createdDate: string;
+  isOnLine: Boolean,
+  lastSeen: string
 }

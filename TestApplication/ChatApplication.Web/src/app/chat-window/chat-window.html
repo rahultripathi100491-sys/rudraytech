@@ -1,7 +1,7 @@
 <div class="chat-container">
 
   <!-- =====================================================
-       INCOMING CALL OVERLAY
+       INCOMING CALL
        ===================================================== -->
 
   <div
@@ -56,12 +56,10 @@
 
 
   <!-- =====================================================
-       CHAT SIDEBAR
+       SIDEBAR
        ===================================================== -->
 
   <aside class="chat-sidebar">
-
-    <!-- Sidebar Header -->
 
     <div class="sidebar-header">
 
@@ -82,7 +80,7 @@
 
 
     <!-- ===================================================
-         SEARCH USERS
+         SEARCH
          =================================================== -->
 
     <div
@@ -143,7 +141,7 @@
 
 
     <!-- ===================================================
-         CONVERSATION LIST
+         CONVERSATIONS
          =================================================== -->
 
     <div class="conversation-list">
@@ -152,6 +150,7 @@
         *ngFor="
           let conv of (conversations$ | async)
         "
+
         class="conversation-item"
 
         [class.active]="
@@ -166,9 +165,27 @@
           )
         ">
 
+
         <!-- Avatar -->
 
-        <div class="avatar">
+        <div class="avatar" [style.background-color]="getAvatarColor(conv.participantName)">
+
+          <span
+            class="avatar-status"
+
+            [class.online]="
+              isUserOnline(
+                conv.participantUserId
+              )
+            "
+
+            [class.offline]="
+              !isUserOnline(
+                conv.participantUserId
+              )
+            ">
+          </span>
+
 
           {{
             conv.participantName
@@ -181,7 +198,7 @@
         </div>
 
 
-        <!-- Conversation Info -->
+        <!-- Conversation info -->
 
         <div class="conversation-info">
 
@@ -219,8 +236,6 @@
       </div>
 
 
-      <!-- Empty -->
-
       <div
         *ngIf="
           (conversations$ | async)?.length === 0
@@ -242,23 +257,35 @@
 
   <main class="chat-window">
 
-    <!-- ===================================================
-         ACTIVE CHAT
-         =================================================== -->
-
     <ng-container
       *ngIf="
         activeTargetUserId;
         else noChat
       ">
 
-      <!-- Chat Header -->
+
+      <!-- =================================================
+           CHAT HEADER
+           ================================================= -->
 
       <header class="chat-header">
 
         <div class="user-status">
 
           <h3>
+
+            <span
+              class="status-dot"
+
+              [class.online]="
+                isActiveUserOnline()
+              "
+
+              [class.offline]="
+                !isActiveUserOnline()
+              ">
+            </span>
+
 
             {{
               activeTargetName ||
@@ -267,16 +294,30 @@
 
           </h3>
 
-          <span class="status-indicator online">
 
-            Online
+          <span
+            class="status-indicator"
+
+            [class.online]="
+              isActiveUserOnline()
+            "
+
+            [class.offline]="
+              !isActiveUserOnline()
+            ">
+
+            {{
+              isActiveUserOnline()
+                ? 'Online'
+                : 'Offline'
+            }}
 
           </span>
 
         </div>
 
 
-        <!-- Call Buttons -->
+        <!-- Call -->
 
         <div class="call-actions">
 
@@ -329,6 +370,7 @@
 
             </p>
 
+
             <span class="message-timestamp">
 
               {{
@@ -342,8 +384,6 @@
 
         </div>
 
-
-        <!-- No messages -->
 
         <div
           *ngIf="
@@ -395,7 +435,11 @@
 
             class="send-btn">
 
-            {{ isSending ? 'Sending...' : 'Send' }}
+            {{
+              isSending
+                ? 'Sending...'
+                : 'Send'
+            }}
 
           </button>
 
@@ -407,7 +451,7 @@
 
 
     <!-- ===================================================
-         NO ACTIVE CHAT
+         NO CHAT
          =================================================== -->
 
     <ng-template #noChat>
@@ -435,21 +479,16 @@
 
     </ng-template>
 
-
   </main>
 
 
   <!-- =====================================================
-       VIDEO CALL UI
-       IMPORTANT:
-       This is OUTSIDE the chat *ngIf.
+       VIDEO CALL
        ===================================================== -->
 
   <section
     *ngIf="isCallActive$ | async"
     class="video-call">
-
-    <!-- Video Call Header -->
 
     <div class="video-call-header">
 
@@ -483,16 +522,9 @@
     </div>
 
 
-    <!-- ===================================================
-         VIDEO AREA
-         =================================================== -->
-
     <div class="video-grid">
 
-
-      <!-- =================================================
-           REMOTE VIDEO
-           ================================================= -->
+      <!-- Remote -->
 
       <div
         class="
@@ -519,9 +551,7 @@
       </div>
 
 
-      <!-- =================================================
-           LOCAL VIDEO
-           ================================================= -->
+      <!-- Local -->
 
       <div
         class="

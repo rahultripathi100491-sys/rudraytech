@@ -1,4 +1,6 @@
-﻿namespace TestApplication.Domain.Entity
+﻿using System.Runtime.CompilerServices;
+
+namespace TestApplication.Domain.Entity
 {
     public class LoginResponse
     {
@@ -7,5 +9,6 @@
         public Guid UserId { get; set; }
         public string UserName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
+        public bool IsLogin{ get; set; }
     }
 }

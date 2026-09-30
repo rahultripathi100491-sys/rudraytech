@@ -944,3 +944,127 @@
   }
 
 }
+/* =====================================================
+   PROFILE WRAPPER
+===================================================== */
+
+.profile-wrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+
+
+/* =====================================================
+   PROFILE IMAGE
+===================================================== */
+
+.profile-wrapper .profile-image {
+  width: 60px;
+  height: 60px;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+}
+
+
+/* =====================================================
+   ONLINE / OFFLINE DOT
+===================================================== */
+
+.online-dot {
+  position: absolute;
+
+  right: 0;
+  bottom: 1px;
+
+  width: 14px;
+  height: 14px;
+
+  border-radius: 50%;
+
+  border: 2px solid white;
+
+  box-sizing: border-box;
+}
+
+
+/* Green */
+
+.online-dot.online {
+  background-color: #22c55e;
+}
+
+
+/* Gray */
+
+.online-dot.offline {
+  background-color: #9ca3af;
+}
+
+
+/* =====================================================
+   FRIEND STATUS
+===================================================== */
+
+.friend-status {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  margin: 4px 0;
+
+  font-size: 13px;
+}
+
+
+/* Small status dot */
+
+.status-small-dot {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  display: inline-block;
+}
+
+
+.status-small-dot.online {
+  background-color: #22c55e;
+}
+
+
+.status-small-dot.offline {
+  background-color: #9ca3af;
+}
+
+
+/* =====================================================
+   STATUS TEXT
+===================================================== */
+
+.online-text {
+  color: #16a34a;
+}
+
+
+.offline-text {
+  color: #6b7280;
+}
+
+
+/* =====================================================
+   LAST SEEN
+===================================================== */
+
+.last-seen {
+  margin: 2px 0;
+
+  font-size: 12px;
+
+  color: #9ca3af;
+}

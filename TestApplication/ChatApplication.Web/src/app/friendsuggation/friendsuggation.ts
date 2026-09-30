@@ -1,5 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
+
+import {
+  Subscription
+} from 'rxjs';
 
 import {
   FriendService,
@@ -9,24 +18,42 @@ import {
 import { FriendRequest } from '../models/friendrequest';
 import { Friend } from '../models/friend';
 
+import {
+  SignalRService,
+  UserOnlineEvent,
+  UserOfflineEvent
+} from '../services/signalr.service';
+
+
 @Component({
   selector: 'app-friendsuggation',
+
   standalone: true,
-  imports: [CommonModule],
+
+  imports: [
+    CommonModule
+  ],
+
   templateUrl: './friendsuggation.html',
+
   styleUrl: './friendsuggation.css',
 })
-export class Friendsuggation implements OnInit {
+export class Friendsuggation
+  implements OnInit, OnDestroy {
+
 
   // =====================================================
   // DATA
   // =====================================================
 
-  suggestions: FriendSuggestion[] = [];
+  suggestions:
+    FriendSuggestion[] = [];
 
-  requests: FriendRequest[] = [];
+  requests:
+    FriendRequest[] = [];
 
-  friends: Friend[] = [];
+  friends:
+    Friend[] = [];
 
 
   // =====================================================
@@ -50,18 +77,33 @@ export class Friendsuggation implements OnInit {
 
   requestSuccessMessage = '';
 
+
+  // =====================================================
+  // FRIENDS STATE
+  // =====================================================
+
   loadingFriends = false;
+
+  friendsErrorMessage = '';
 
 
   // =====================================================
   // BUTTON LOADING
   // =====================================================
 
-  loadingUserId: string | null = null;
+  loadingUserId:
+    string | null = null;
 
-  acceptingRequestId: string | null = null;
+  acceptingRequestId:
+    string | null = null;
 
-  friendsErrorMessage = '';
+
+  // =====================================================
+  // SUBSCRIPTIONS
+  // =====================================================
+
+  private subscriptions =
+    new Subscription();
 
 
   // =====================================================
@@ -69,7 +111,8 @@ export class Friendsuggation implements OnInit {
   // =====================================================
 
   constructor(
-    private friendService: FriendService
+    private friendService: FriendService,
+    private signalRService: SignalRService
   ) {}
 
 
@@ -77,15 +120,117 @@ export class Friendsuggation implements OnInit {
   // INIT
   // =====================================================
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
 
-    // Load incoming friend requests
+    // -----------------------------------------------------
+    // Start SignalR
+    // -----------------------------------------------------
+
+    try {
+
+      await this.signalRService
+        .startConnection();
+
+      console.log(
+        'SignalR connected for friend presence.'
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Failed to start SignalR:',
+        error
+      );
+    }
+
+
+    // -----------------------------------------------------
+    // Load data
+    // -----------------------------------------------------
+
     this.loadFriendRequests();
 
-    // Load people you may know
     this.loadSuggestions();
 
     this.loadFriends();
+
+
+    // -----------------------------------------------------
+    // Initial online users
+    // -----------------------------------------------------
+
+    this.subscriptions.add(
+
+      this.signalRService
+        .onlineUsers$
+        .subscribe(
+          (onlineUsers) => {
+
+            console.log(
+              'Current online users:',
+              onlineUsers
+            );
+
+            this.updateFriendsPresence(
+              onlineUsers.map(
+                x => x.userId
+              )
+            );
+
+          }
+        )
+    );
+
+
+    // -----------------------------------------------------
+    // User became online
+    // -----------------------------------------------------
+
+    this.subscriptions.add(
+
+      this.signalRService
+        .userOnline$
+        .subscribe(
+          (event: UserOnlineEvent) => {
+
+            console.log(
+              '🟢 Friend online:',
+              event.userId
+            );
+
+            this.setFriendOnline(
+              event.userId
+            );
+
+          }
+        )
+    );
+
+
+    // -----------------------------------------------------
+    // User became offline
+    // -----------------------------------------------------
+
+    this.subscriptions.add(
+
+      this.signalRService
+        .userOffline$
+        .subscribe(
+          (event: UserOfflineEvent) => {
+
+            console.log(
+              '⚪ Friend offline:',
+              event.userId
+            );
+
+            this.setFriendOffline(
+              event.userId,
+              event.lastSeen
+            );
+
+          }
+        )
+    );
   }
 
 
@@ -103,7 +248,9 @@ export class Friendsuggation implements OnInit {
       .getFriendRequests()
       .subscribe({
 
-        next: (result: FriendRequest[]) => {
+        next: (
+          result: FriendRequest[]
+        ) => {
 
           this.requests = result;
 
@@ -148,7 +295,9 @@ export class Friendsuggation implements OnInit {
       .getSuggestions(1, 20)
       .subscribe({
 
-        next: (result: FriendSuggestion[]) => {
+        next: (
+          result: FriendSuggestion[]
+        ) => {
 
           this.suggestions = result;
 
@@ -178,6 +327,205 @@ export class Friendsuggation implements OnInit {
 
 
   // =====================================================
+  // GET FRIENDS
+  // =====================================================
+
+  loadFriends(): void {
+
+    this.loadingFriends = true;
+
+    this.friendsErrorMessage = '';
+
+    this.friendService
+      .getFriends()
+      .subscribe({
+
+        next: (
+          result: Friend[]
+        ) => {
+
+          this.friends = result || [];
+
+          this.loadingFriends = false;
+
+
+          // ------------------------------------------------
+          // Apply current SignalR presence
+          // ------------------------------------------------
+
+          this.applyCurrentPresence();
+
+
+          console.log(
+            'Friends:',
+            this.friends
+          );
+        },
+
+        error: (error) => {
+
+          console.error(
+            'Error loading friends:',
+            error
+          );
+
+          this.friendsErrorMessage =
+            error?.error?.message ||
+            'Unable to load friends.';
+
+          this.loadingFriends = false;
+        }
+      });
+  }
+
+
+  // =====================================================
+  // APPLY CURRENT PRESENCE
+  // =====================================================
+
+  private applyCurrentPresence(): void {
+
+    this.friends.forEach(
+      friend => {
+
+        friend.isOnLine =
+          this.signalRService.isUserOnline(
+            friend.userId
+          );
+
+      }
+    );
+  }
+
+
+  // =====================================================
+  // UPDATE FRIENDS PRESENCE
+  // =====================================================
+
+  private updateFriendsPresence(
+    onlineUserIds: string[]
+  ): void {
+
+    const onlineIds =
+      new Set(
+        onlineUserIds.map(
+          id => String(id)
+        )
+      );
+
+
+    this.friends.forEach(
+      friend => {
+
+        friend.isOnLine =
+          onlineIds.has(
+            String(friend.userId)
+          );
+
+      }
+    );
+  }
+
+
+  // =====================================================
+  // FRIEND ONLINE
+  // =====================================================
+
+  private setFriendOnline(
+    userId: string
+  ): void {
+
+    if (!userId) {
+      return;
+    }
+
+
+    const friend =
+      this.friends.find(
+        x =>
+          String(x.userId) ===
+          String(userId)
+      );
+
+
+    if (!friend) {
+
+      console.log(
+        'Online user is not in friends list:',
+        userId
+      );
+
+      return;
+    }
+
+
+    friend.isOnLine = true;
+
+
+    console.log(
+      `🟢 Friend ${userId} is online`
+    );
+  }
+
+
+  // =====================================================
+  // FRIEND OFFLINE
+  // =====================================================
+
+  private setFriendOffline(
+    userId: string,
+    lastSeen?: string
+  ): void {
+
+    if (!userId) {
+      return;
+    }
+
+
+    const friend =
+      this.friends.find(
+        x =>
+          String(x.userId) ===
+          String(userId)
+      );
+
+
+    if (!friend) {
+
+      return;
+    }
+
+
+    friend.isOnLine = false;
+
+
+    if (lastSeen) {
+
+      friend.lastSeen =
+        lastSeen;
+    }
+
+
+    console.log(
+      `⚪ Friend ${userId} is offline`
+    );
+  }
+
+
+  // =====================================================
+  // CHECK FRIEND ONLINE
+  // =====================================================
+
+  isFriendOnline(
+    userId: string
+  ): boolean {
+
+    return this.signalRService
+      .isUserOnline(userId);
+  }
+
+
+  // =====================================================
   // SEND FRIEND REQUEST
   // =====================================================
 
@@ -189,6 +537,7 @@ export class Friendsuggation implements OnInit {
       return;
     }
 
+
     this.loadingUserId =
       friend.userId;
 
@@ -196,8 +545,11 @@ export class Friendsuggation implements OnInit {
 
     this.successMessage = '';
 
+
     this.friendService
-      .sendFriendRequest(friend.userId)
+      .sendFriendRequest(
+        friend.userId
+      )
       .subscribe({
 
         next: (response) => {
@@ -207,12 +559,13 @@ export class Friendsuggation implements OnInit {
             response
           );
 
+
           if (response.success) {
 
             this.successMessage =
               response.message;
 
-            // Remove from suggestions
+
             this.suggestions =
               this.suggestions.filter(
                 x =>
@@ -226,6 +579,7 @@ export class Friendsuggation implements OnInit {
               response.message;
           }
 
+
           this.loadingUserId = null;
         },
 
@@ -236,9 +590,11 @@ export class Friendsuggation implements OnInit {
             error
           );
 
+
           this.errorMessage =
             error?.error?.message ||
             'Unable to send friend request.';
+
 
           this.loadingUserId = null;
         }
@@ -266,9 +622,12 @@ export class Friendsuggation implements OnInit {
     request: FriendRequest
   ): void {
 
-    if (this.acceptingRequestId !== null) {
+    if (
+      this.acceptingRequestId !== null
+    ) {
       return;
     }
+
 
     this.acceptingRequestId =
       request.friendshipId;
@@ -276,6 +635,7 @@ export class Friendsuggation implements OnInit {
     this.requestErrorMessage = '';
 
     this.requestSuccessMessage = '';
+
 
     this.friendService
       .acceptFriendRequest(
@@ -290,12 +650,13 @@ export class Friendsuggation implements OnInit {
             response
           );
 
+
           if (response.success) {
 
             this.requestSuccessMessage =
               response.message;
 
-            // Remove accepted request
+
             this.requests =
               this.requests.filter(
                 x =>
@@ -309,6 +670,7 @@ export class Friendsuggation implements OnInit {
               response.message;
           }
 
+
           this.acceptingRequestId = null;
         },
 
@@ -319,9 +681,11 @@ export class Friendsuggation implements OnInit {
             error
           );
 
+
           this.requestErrorMessage =
             error?.error?.message ||
             'Unable to accept friend request.';
+
 
           this.acceptingRequestId = null;
         }
@@ -352,33 +716,19 @@ export class Friendsuggation implements OnInit {
     const image =
       event.target as HTMLImageElement;
 
+
     image.src =
       'assets/default-profile.png';
   }
-loadFriends(): void {
 
-  this.loadingFriends = true;
 
-  this.friendService
-    .getFriends()
-    .subscribe({
+  // =====================================================
+  // DESTROY
+  // =====================================================
 
-      next: (result) => {
+  ngOnDestroy(): void {
 
-        this.friends = result;
+    this.subscriptions.unsubscribe();
 
-        this.loadingFriends = false;
-      },
-
-      error: (error) => {
-
-        console.error(
-          'Error loading friends:',
-          error
-        );
-
-        this.loadingFriends = false;
-      }
-    });
   }
 }

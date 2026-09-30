@@ -1,0 +1,46 @@
+<div class="online-users">
+
+  <div class="header">
+
+    <h2>
+      Online Users
+    </h2>
+
+    <span class="count">
+      {{ users.length }}
+    </span>
+
+  </div>
+
+  <div
+    *ngIf="users.length === 0"
+    class="empty">
+
+    Nobody is online.
+
+  </div>
+
+  <div
+    *ngFor="let user of users"
+    class="user">
+
+    <div class="avatar">
+      {{ user.userName.charAt(0).toUpperCase() }}
+    </div>
+
+    <div class="info">
+
+      <div class="name">
+        {{ user.userName }}
+      </div>
+
+      <div class="status">
+        <span class="dot"></span>
+        Online
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
