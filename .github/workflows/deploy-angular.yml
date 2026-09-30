@@ -23,7 +23,7 @@ jobs:
 
 
       # =====================================================
-      # NODE.JS
+      # NODE
       # =====================================================
 
       - name: Setup Node.js
@@ -35,7 +35,7 @@ jobs:
 
 
       # =====================================================
-      # INSTALL DEPENDENCIES
+      # INSTALL
       # =====================================================
 
       - name: Install dependencies
@@ -44,7 +44,7 @@ jobs:
 
 
       # =====================================================
-      # BUILD ANGULAR PRODUCTION
+      # BUILD
       # =====================================================
 
       - name: Build Angular Production
@@ -53,7 +53,7 @@ jobs:
 
 
       # =====================================================
-      # VERIFY ANGULAR BUILD
+      # VERIFY BUILD
       # =====================================================
 
       - name: Verify Angular build
@@ -61,11 +61,9 @@ jobs:
         run: |
 
           echo "======================================"
-          echo "Angular build completed"
+          echo "Angular build"
           echo "======================================"
 
-          echo ""
-          echo "DIST CONTENT:"
           find dist -maxdepth 4 -type f | sort
 
           echo ""
@@ -73,29 +71,12 @@ jobs:
 
           test -f dist/ChatApplication.Web/browser/index.html
 
-          echo ""
-          echo "index.html found successfully."
-
-          echo ""
-          echo "Browser build files:"
-
-          find dist/ChatApplication.Web/browser \
-            -maxdepth 2 \
-            -type f \
-            | sort
+          echo "Build successful."
 
 
       # =====================================================
       # CREATE .HTACCESS
       # =====================================================
-      # InfinityFree uses Apache.
-      # This allows Angular routes such as:
-      #
-      # /chat
-      # /friends
-      # /profile
-      #
-      # to load index.html.
 
       - name: Create Angular .htaccess
         working-directory: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
@@ -113,42 +94,14 @@ jobs:
           RewriteRule ^ index.html [L]
           EOF
 
-          echo ".htaccess created"
+          echo ".htaccess created."
 
 
       # =====================================================
-      # VERIFY DEPLOYMENT DIRECTORY
+      # DEPLOY
       # =====================================================
 
-      - name: Verify deployment directory
-        run: |
-
-          echo "======================================"
-          echo "DEPLOYMENT DIRECTORY"
-          echo "======================================"
-
-          DEPLOY_DIR="./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser"
-
-          test -f "$DEPLOY_DIR/index.html"
-
-          echo ""
-          echo "index.html:"
-          ls -lh "$DEPLOY_DIR/index.html"
-
-          echo ""
-          echo "All deployment files:"
-          find "$DEPLOY_DIR" -type f | sort
-
-          echo ""
-          echo "Total files:"
-          find "$DEPLOY_DIR" -type f | wc -l
-
-
-      # =====================================================
-      # DEPLOY TO INFINITYFREE
-      # =====================================================
-
-      - name: Deploy to InfinityFree
+      - name: Deploy Angular to InfinityFree htdocs
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
 
@@ -162,13 +115,13 @@ jobs:
 
           port: 21
 
-          # Angular build output
+          # Local Angular output
           local-dir: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/
 
-          # InfinityFree website root
-          server-dir: /htdocs/
+          # IMPORTANT
+          # No leading slash.
+          server-dir: htdocs/
 
-          # Don't delete unrelated files on the server
           dangerous-clean-slate: false
 
           exclude: |
