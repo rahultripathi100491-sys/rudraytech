@@ -1,61 +1,6 @@
 <div class="chat-container">
 
   <!-- =====================================================
-       INCOMING CALL
-       ===================================================== -->
-
-  <div
-    *ngIf="incomingCallUserId"
-    class="incoming-call-overlay">
-
-    <div class="incoming-call-card">
-
-      <div class="call-avatar">
-        📹
-      </div>
-
-      <h3>
-        Incoming Video Call
-      </h3>
-
-      <p>
-
-        <strong>
-          {{ incomingCallName }}
-        </strong>
-
-        is calling you...
-
-      </p>
-
-      <div class="call-actions-group">
-
-        <button
-          type="button"
-          class="accept-btn"
-          (click)="acceptIncomingCall()">
-
-          📹 Accept
-
-        </button>
-
-        <button
-          type="button"
-          class="reject-btn"
-          (click)="rejectIncomingCall()">
-
-          ❌ Decline
-
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- =====================================================
        SIDEBAR
        ===================================================== -->
 
@@ -63,9 +8,7 @@
 
     <div class="sidebar-header">
 
-      <h2>
-        Conversations
-      </h2>
+      <h2>Conversations</h2>
 
       <button
         type="button"
@@ -80,7 +23,7 @@
 
 
     <!-- ===================================================
-         SEARCH
+         NEW CHAT SEARCH
          =================================================== -->
 
     <div
@@ -93,7 +36,6 @@
         (input)="onSearchUsers()"
         placeholder="Search user by name or email..."
         autocomplete="off"
-        autofocus
       />
 
       <div class="search-results-list">
@@ -113,7 +55,6 @@
 
         </div>
 
-
         <p
           *ngIf="
             searchQuery.trim().length > 0 &&
@@ -126,7 +67,6 @@
         </p>
 
       </div>
-
 
       <button
         type="button"
@@ -150,14 +90,10 @@
         *ngFor="
           let conv of (conversations$ | async)
         "
-
         class="conversation-item"
-
         [class.active]="
-          conv.participantUserId ===
-          activeTargetUserId
+          conv.participantUserId === activeTargetUserId
         "
-
         (click)="
           startConversation(
             conv.participantUserId,
@@ -165,51 +101,37 @@
           )
         ">
 
-
-        <!-- Avatar -->
-
-        <div class="avatar" [style.background-color]="getAvatarColor(conv.participantName)">
+        <div
+          class="avatar"
+          [style.background-color]="
+            getAvatarColor(conv.participantName)
+          ">
 
           <span
             class="avatar-status"
-
             [class.online]="
-              isUserOnline(
-                conv.participantUserId
-              )
+              isUserOnline(conv.participantUserId)
             "
-
             [class.offline]="
-              !isUserOnline(
-                conv.participantUserId
-              )
+              !isUserOnline(conv.participantUserId)
             ">
           </span>
 
-
           {{
             conv.participantName
-              ? conv.participantName
-                  .charAt(0)
-                  .toUpperCase()
+              ? conv.participantName.charAt(0).toUpperCase()
               : '?'
           }}
 
         </div>
-
-
-        <!-- Conversation info -->
 
         <div class="conversation-info">
 
           <div class="conversation-top">
 
             <span class="user-name">
-
               {{ conv.participantName }}
-
             </span>
-
 
             <span
               *ngIf="conv.unreadCount > 0"
@@ -220,7 +142,6 @@
             </span>
 
           </div>
-
 
           <p class="last-message">
 
@@ -252,17 +173,13 @@
 
 
   <!-- =====================================================
-       MAIN CHAT
+       CHAT WINDOW
        ===================================================== -->
 
   <main class="chat-window">
 
     <ng-container
-      *ngIf="
-        activeTargetUserId;
-        else noChat
-      ">
-
+      *ngIf="activeTargetUserId; else noChat">
 
       <!-- =================================================
            CHAT HEADER
@@ -276,35 +193,18 @@
 
             <span
               class="status-dot"
-
-              [class.online]="
-                isActiveUserOnline()
-              "
-
-              [class.offline]="
-                !isActiveUserOnline()
-              ">
+              [class.online]="isActiveUserOnline()"
+              [class.offline]="!isActiveUserOnline()">
             </span>
 
-
-            {{
-              activeTargetName ||
-              'Chat'
-            }}
+            {{ activeTargetName || 'Chat' }}
 
           </h3>
 
-
           <span
             class="status-indicator"
-
-            [class.online]="
-              isActiveUserOnline()
-            "
-
-            [class.offline]="
-              !isActiveUserOnline()
-            ">
+            [class.online]="isActiveUserOnline()"
+            [class.offline]="!isActiveUserOnline()">
 
             {{
               isActiveUserOnline()
@@ -317,15 +217,48 @@
         </div>
 
 
-        <!-- Call -->
+        <!-- =================================================
+             CALL BUTTONS
+             ================================================= -->
 
         <div class="call-actions">
 
+          <!-- VOICE CALL -->
+
           <button
             type="button"
-            (click)="startCall()">
+            class="voice-call-button"
+            (click)="startVoiceCall()"
+            [disabled]="
+              isStartingCall ||
+              !isActiveUserOnline()
+            ">
 
-            📹 Video Call
+            {{
+              isStartingCall
+                ? 'Calling...'
+                : '📞 Voice Call'
+            }}
+
+          </button>
+
+
+          <!-- VIDEO CALL -->
+
+          <button
+            type="button"
+            class="video-call-button"
+            (click)="startCall()"
+            [disabled]="
+              isStartingCall ||
+              !isActiveUserOnline()
+            ">
+
+            {{
+              isStartingCall
+                ? 'Calling...'
+                : '📹 Video Call'
+            }}
 
           </button>
 
@@ -335,7 +268,7 @@
 
 
       <!-- =================================================
-           MESSAGE STREAM
+           MESSAGES
            ================================================= -->
 
       <div
@@ -347,7 +280,6 @@
             let msg of
               (chatService.activeMessages$ | async)
           "
-
           class="message-bubble-wrapper"
 
           [class.sent]="
@@ -365,11 +297,8 @@
           <div class="message-bubble">
 
             <p class="message-content">
-
               {{ msg.content }}
-
             </p>
-
 
             <span class="message-timestamp">
 
@@ -387,17 +316,13 @@
 
         <div
           *ngIf="
-            (chatService.activeMessages$ | async)
-              ?.length === 0
+            (chatService.activeMessages$ | async)?.length === 0
           "
           class="no-messages">
 
           <p>
-
-            This is the start of your
-            conversation.
+            This is the start of your conversation.
             Send a message!
-
           </p>
 
         </div>
@@ -412,8 +337,8 @@
       <footer class="chat-input-area">
 
         <form
-          (ngSubmit)="onSendMessage()"
-          class="input-form">
+          class="input-form"
+          (ngSubmit)="onSendMessage()">
 
           <input
             type="text"
@@ -424,16 +349,13 @@
             [disabled]="isSending"
           />
 
-
           <button
             type="submit"
-
+            class="send-btn"
             [disabled]="
               !newMessageText.trim() ||
               isSending
-            "
-
-            class="send-btn">
+            ">
 
             {{
               isSending
@@ -451,7 +373,7 @@
 
 
     <!-- ===================================================
-         NO CHAT
+         NO ACTIVE CHAT
          =================================================== -->
 
     <ng-template #noChat>
@@ -483,97 +405,355 @@
 
 
   <!-- =====================================================
-       VIDEO CALL
+       INCOMING CALL
        ===================================================== -->
 
-  <section
-    *ngIf="isCallActive$ | async"
-    class="video-call">
+  <div
+    *ngIf="
+      incomingCallUserId &&
+      !(isCallActive$ | async)
+    "
+    class="incoming-call-overlay">
 
-    <div class="video-call-header">
+    <div class="incoming-call-card">
 
-      <div class="video-call-user">
+      <div class="incoming-avatar">
 
-        <strong>
-          Video Call
-        </strong>
-
-        <span>
-
-          {{
-            activeTargetName ||
-            'Connected'
-          }}
-
-        </span>
+        {{
+          incomingCallName
+            ? incomingCallName.charAt(0).toUpperCase()
+            : '?'
+        }}
 
       </div>
 
+
+      <!-- CALL TYPE -->
+
+      <h2>
+
+        {{
+          incomingCallType === 'voice'
+            ? 'Incoming Voice Call'
+            : 'Incoming Video Call'
+        }}
+
+      </h2>
+
+
+      <p>
+
+        <strong>
+          {{ incomingCallName || 'Unknown user' }}
+        </strong>
+
+        is calling you...
+
+      </p>
+
+
+      <div class="incoming-call-actions">
+
+        <!-- ACCEPT -->
+
+        <button
+          type="button"
+          class="accept-call-button"
+          (click)="acceptIncomingCall()">
+
+          {{
+            incomingCallType === 'voice'
+              ? '📞 Accept'
+              : '🎥 Accept'
+          }}
+
+        </button>
+
+
+        <!-- DECLINE -->
+
+        <button
+          type="button"
+          class="reject-call-button"
+          (click)="rejectIncomingCall()">
+
+          ❌ Decline
+
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       ACTIVE VOICE CALL
+       ===================================================== -->
+
+  <section
+    *ngIf="
+      (isCallActive$ | async) &&
+      callType === 'voice'
+    "
+    class="fullscreen-call voice-call-screen">
+
+
+    <!-- ===================================================
+         REMOTE AUDIO
+         =================================================== -->
+
+    <audio
+      #remoteAudio
+      autoplay
+      playsinline>
+    </audio>
+
+
+    <!-- ===================================================
+         VOICE CALL USER
+         =================================================== -->
+
+    <div class="voice-call-content">
+
+      <div
+        class="voice-call-avatar"
+        [style.background-color]="
+          getAvatarColor(activeTargetName)
+        ">
+
+        {{
+          activeTargetName
+            ? activeTargetName.charAt(0).toUpperCase()
+            : '?'
+        }}
+
+      </div>
+
+
+      <h2>
+
+        {{ activeTargetName || 'Voice Call' }}
+
+      </h2>
+
+
+      <p class="call-status">
+
+        {{ callStatus || 'Connected' }}
+
+      </p>
+
+    </div>
+
+
+    <!-- ===================================================
+         VOICE CALL CONTROLS
+         =================================================== -->
+
+    <div class="call-controls">
+
+      <!-- MICROPHONE -->
+
+      <button
+        type="button"
+        class="call-control-button"
+        [class.active-control]="isMicrophoneMuted"
+        (click)="toggleMicrophone()">
+
+        {{
+          isMicrophoneMuted
+            ? '🔇'
+            : '🎤'
+        }}
+
+      </button>
+
+
+      <!-- END -->
 
       <button
         type="button"
         class="end-call-button"
         (click)="endCall()">
 
-        ❌ End Call
+        📞
+
+        <span>
+          End Call
+        </span>
 
       </button>
 
     </div>
 
-
-    <div class="video-grid">
-
-      <!-- Remote -->
-
-      <div
-        class="
-          video-container
-          remote-video-container
-        ">
-
-        <video
-          id="remoteVideo"
-          autoplay
-          playsinline>
-        </video>
+  </section>
 
 
-        <div class="video-label">
+  <!-- =====================================================
+       ACTIVE VIDEO CALL
+       ===================================================== -->
 
-          {{
-            activeTargetName ||
-            'Remote User'
-          }}
+  <section
+    *ngIf="
+      (isCallActive$ | async) &&
+      callType === 'video'
+    "
+    class="fullscreen-call">
 
-        </div>
+
+    <!-- ===================================================
+         REMOTE VIDEO
+         =================================================== -->
+
+    <video
+      #remoteVideo
+      class="remote-video"
+      autoplay
+      playsinline>
+    </video>
+
+
+    <!-- ===================================================
+         REMOTE FALLBACK
+         =================================================== -->
+
+    <div
+      *ngIf="!remoteStream"
+      class="remote-video-placeholder">
+
+      <div class="remote-placeholder-avatar">
+
+        {{
+          activeTargetName
+            ? activeTargetName.charAt(0).toUpperCase()
+            : '?'
+        }}
+
+      </div>
+
+      <h2>
+
+        {{ activeTargetName || 'Video Call' }}
+
+      </h2>
+
+      <p>
+
+        {{ callStatus || 'Connecting...' }}
+
+      </p>
+
+    </div>
+
+
+    <!-- ===================================================
+         REMOTE USER INFO
+         =================================================== -->
+
+    <div class="remote-user-info">
+
+      <div class="remote-user-avatar">
+
+        {{
+          activeTargetName
+            ? activeTargetName.charAt(0).toUpperCase()
+            : '?'
+        }}
 
       </div>
 
+      <div>
 
-      <!-- Local -->
+        <strong>
+          {{ activeTargetName || 'Video Call' }}
+        </strong>
 
-      <div
-        class="
-          video-container
-          local-video-container
-        ">
-
-        <video
-          id="localVideo"
-          autoplay
-          playsinline
-          muted>
-        </video>
-
-
-        <div class="video-label">
-
-          You
-
-        </div>
+        <span>
+          {{ callStatus || 'Connected' }}
+        </span>
 
       </div>
+
+    </div>
+
+
+    <!-- ===================================================
+         LOCAL VIDEO
+         =================================================== -->
+
+    <div class="local-video-wrapper">
+
+      <video
+        #localVideo
+        class="local-video"
+        autoplay
+        playsinline
+        muted>
+      </video>
+
+      <div class="local-video-label">
+        You
+      </div>
+
+    </div>
+
+
+    <!-- ===================================================
+         VIDEO CONTROLS
+         =================================================== -->
+
+    <div class="call-controls">
+
+      <!-- MICROPHONE -->
+
+      <button
+        type="button"
+        class="call-control-button"
+        [class.active-control]="isMicrophoneMuted"
+        (click)="toggleMicrophone()">
+
+        {{
+          isMicrophoneMuted
+            ? '🔇'
+            : '🎤'
+        }}
+
+      </button>
+
+
+      <!-- CAMERA -->
+
+      <button
+        type="button"
+        class="call-control-button"
+        [class.active-control]="isCameraOff"
+        (click)="toggleCamera()">
+
+        {{
+          isCameraOff
+            ? '🚫'
+            : '🎥'
+        }}
+
+      </button>
+
+
+      <!-- END CALL -->
+
+      <button
+        type="button"
+        class="end-call-button"
+        (click)="endCall()">
+
+        📞
+
+        <span>
+          End Call
+        </span>
+
+      </button>
 
     </div>
 
