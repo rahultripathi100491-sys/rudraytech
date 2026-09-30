@@ -1,9 +1,18 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  Subject
+} from 'rxjs';
 
 import { ChatMessage } from '../models/chat-message';
 import { HUB_URL } from '../app.config';
+
+
+// =========================================================
+// USER ONLINE
+// =========================================================
 
 export interface UserOnlineEvent {
   userId: string;
@@ -11,26 +20,68 @@ export interface UserOnlineEvent {
   connectedAtUtc?: string;
 }
 
+
+// =========================================================
+// USER OFFLINE
+// =========================================================
+
 export interface UserOfflineEvent {
   userId: string;
   userName?: string;
   lastSeen?: string;
 }
 
+
+// =========================================================
+// MESSAGE STATUS
+// =========================================================
+
+export type MessageStatus =
+  | 'Sent'
+  | 'Delivered'
+  | 'Read';
+
+
+// =========================================================
+// MESSAGE STATUS EVENT
+// =========================================================
+
+export interface MessageStatusChangedEvent {
+
+  messageId: string;
+
+  status:
+    | 'Sent'
+    | 'Delivered'
+    | 'Read';
+
+  deliveredAtUtc?: string | null;
+
+  readAtUtc?: string | null;
+
+}
+
+
+// =========================================================
+// SERVICE
+// =========================================================
+
 @Injectable({
   providedIn: 'root'
 })
 export class SignalRService {
 
-  private hubConnection: signalR.HubConnection | null = null;
+  private hubConnection:
+    signalR.HubConnection | null = null;
 
-  private connectionPromise: Promise<void> | null = null;
+  private connectionPromise:
+    Promise<void> | null = null;
 
   private manuallyStopped = false;
 
 
   // =========================================================
-  // CHAT MESSAGE
+  // MESSAGE RECEIVED
   // =========================================================
 
   private messageReceivedSubject =
@@ -42,7 +93,25 @@ export class SignalRService {
 
 
   // =========================================================
-  // USER ONLINE EVENT
+  // MESSAGE STATUS CHANGED
+  // =========================================================
+
+  private messageStatusChangedSubject =
+    new Subject<MessageStatusChangedEvent>();
+
+  public messageStatusChanged$:
+    Observable<MessageStatusChangedEvent> =
+    this.messageStatusChangedSubject.asObservable();
+
+
+  // Alias if your component uses messageStatus$
+  public messageStatus$:
+    Observable<MessageStatusChangedEvent> =
+    this.messageStatusChanged$;
+
+
+  // =========================================================
+  // USER ONLINE
   // =========================================================
 
   private userOnlineSubject =
@@ -54,7 +123,7 @@ export class SignalRService {
 
 
   // =========================================================
-  // USER OFFLINE EVENT
+  // USER OFFLINE
   // =========================================================
 
   private userOfflineSubject =
@@ -81,12 +150,15 @@ export class SignalRService {
   // START CONNECTION
   // =========================================================
 
-  public startConnection(token?: string): Promise<void> {
+  public startConnection(
+    token?: string
+  ): Promise<void> {
 
     const jwtToken =
       token ||
       localStorage.getItem('token') ||
       '';
+
 
     if (!jwtToken) {
 
@@ -97,6 +169,7 @@ export class SignalRService {
       return Promise.reject(
         new Error('JWT token missing')
       );
+
     }
 
 
@@ -106,22 +179,26 @@ export class SignalRService {
       this.hubConnection.state ===
         signalR.HubConnectionState.Connected
     ) {
+
       return Promise.resolve();
+
     }
 
 
     // Already connecting
     if (this.connectionPromise) {
+
       return this.connectionPromise;
+
     }
 
 
     this.manuallyStopped = false;
 
 
-    // =====================================================
-    // CREATE CONNECTION
-    // =====================================================
+    // =======================================================
+    // CREATE HUB CONNECTION
+    // =======================================================
 
     this.hubConnection =
       new signalR.HubConnectionBuilder()
@@ -135,6 +212,7 @@ export class SignalRService {
                 localStorage.getItem('token') ||
                 jwtToken
               );
+
             }
           }
         )
@@ -154,50 +232,60 @@ export class SignalRService {
         .build();
 
 
-    // =====================================================
+    // =======================================================
     // REGISTER LISTENERS
-    // =====================================================
+    // =======================================================
 
     this.registerSignalRListeners();
 
 
-    // =====================================================
+    // =======================================================
     // START
-    // =====================================================
+    // =======================================================
 
     this.connectionPromise =
       this.hubConnection
         .start()
 
-        .then(async () => {
+        .then(
+          async () => {
 
-          console.log(
-            'SignalR Connection Started Successfully'
-          );
+            console.log(
+              'SignalR Connection Started Successfully'
+            );
 
-          // Get users already online
-          await this.loadOnlineUsers();
 
-        })
+            await this.loadOnlineUsers();
 
-        .catch((error) => {
+          }
+        )
 
-          console.error(
-            'Error starting SignalR connection:',
-            error
-          );
+        .catch(
+          (error) => {
 
-          this.hubConnection = null;
+            console.error(
+              'Error starting SignalR connection:',
+              error
+            );
 
-          throw error;
 
-        })
+            this.hubConnection =
+              null;
 
-        .finally(() => {
 
-          this.connectionPromise = null;
+            throw error;
 
-        });
+          }
+        )
+
+        .finally(
+          () => {
+
+            this.connectionPromise =
+              null;
+
+          }
+        );
 
 
     return this.connectionPromise;
@@ -211,13 +299,15 @@ export class SignalRService {
   private registerSignalRListeners(): void {
 
     if (!this.hubConnection) {
+
       return;
+
     }
 
 
-    // =====================================================
+    // =======================================================
     // RECEIVE MESSAGE
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.on(
       'ReceiveMessage',
@@ -233,82 +323,160 @@ export class SignalRService {
           localStorage.getItem('userId') || '';
 
 
-        const normalizedMessage: ChatMessage = {
+        const normalizedMessage:
+          ChatMessage = {
 
           id:
-            data.id ??
-            data.Id,
+            data?.id ??
+            data?.Id,
 
           senderUserId:
-            data.senderUserId ??
-            data.SenderUserId,
+            data?.senderUserId ??
+            data?.SenderUserId ??
+            data?.senderId ??
+            data?.SenderId,
 
           receiverUserId:
-            data.receiverUserId ??
-            data.ReceiverUserId ??
+            data?.receiverUserId ??
+            data?.ReceiverUserId ??
+            data?.receiverId ??
+            data?.ReceiverId ??
             currentUserId,
 
           content:
-            data.content ??
-            data.Content ??
-            data.message ??
-            data.Message ??
+            data?.content ??
+            data?.Content ??
+            data?.message ??
+            data?.Message ??
             '',
 
           sentAt:
-            data.sentAtUtc ??
-            data.SentAtUtc ??
-            data.sentAt ??
-            data.SentAt ??
+            data?.sentAtUtc ??
+            data?.SentAtUtc ??
+            data?.sentAt ??
+            data?.SentAt ??
+            data?.createdAtUtc ??
+            data?.CreatedAtUtc ??
             new Date().toISOString()
+
         };
 
 
         this.messageReceivedSubject.next(
           normalizedMessage
         );
+
       }
     );
 
 
-    // =====================================================
+    // =======================================================
+    // MESSAGE STATUS CHANGED
+    // =======================================================
+
+    this.hubConnection.on(
+      'MessageStatusChanged',
+      (data: any) => {
+
+        console.log(
+          'MessageStatusChanged:',
+          data
+        );
+
+
+        const status =
+          this.normalizeStatus(
+            data?.status ??
+            data?.Status
+          );
+
+
+        const messageId =
+          data?.messageId ??
+          data?.MessageId ??
+          data?.id ??
+          data?.Id;
+
+
+        if (!messageId || !status) {
+
+          console.warn(
+            'Invalid MessageStatusChanged event:',
+            data
+          );
+
+          return;
+
+        }
+
+
+        const event:
+          MessageStatusChangedEvent = {
+
+          messageId:
+            String(messageId),
+
+          status,
+
+          deliveredAtUtc:
+            data?.deliveredAtUtc ??
+            data?.DeliveredAtUtc ??
+            data?.deliveredAt ??
+            data?.DeliveredAt ??
+            null,
+
+          readAtUtc:
+            data?.readAtUtc ??
+            data?.ReadAtUtc ??
+            data?.readAt ??
+            data?.ReadAt ??
+            null
+
+        };
+
+
+        this.messageStatusChangedSubject.next(
+          event
+        );
+
+      }
+    );
+
+
+    // =======================================================
     // USER ONLINE
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.on(
       'UserOnline',
       (data: string | UserOnlineEvent | any) => {
 
         console.log(
-          '🟢 User Online:',
+          'User Online:',
           data
         );
 
 
-        /*
-         * Your C# Hub sends:
-         *
-         * Clients.Others.SendAsync(
-         *     "UserOnline",
-         *     userId
-         * );
-         *
-         * Therefore data is normally just a string.
-         */
+        let user:
+          UserOnlineEvent;
 
 
-        let user: UserOnlineEvent;
-
-
-        if (typeof data === 'string') {
+        if (
+          typeof data ===
+          'string'
+        ) {
 
           user = {
-            userId: data
+
+            userId:
+              data
+
           };
 
         } else {
 
           user = {
+
             userId:
               data?.userId ??
               data?.UserId ??
@@ -322,40 +490,48 @@ export class SignalRService {
             connectedAtUtc:
               data?.connectedAtUtc ??
               data?.ConnectedAtUtc
+
           };
+
         }
 
 
         if (!user.userId) {
+
           return;
+
         }
 
 
-        // Add to local online users
-        this.addOnlineUser(user);
+        this.addOnlineUser(
+          user
+        );
 
 
-        // Notify subscribers
-        this.userOnlineSubject.next(user);
+        this.userOnlineSubject.next(
+          user
+        );
+
       }
     );
 
 
-    // =====================================================
+    // =======================================================
     // USER OFFLINE
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.on(
       'UserOffline',
       (data: UserOfflineEvent | any) => {
 
         console.log(
-          '🔴 User Offline:',
+          'User Offline:',
           data
         );
 
 
-        const event: UserOfflineEvent = {
+        const event:
+          UserOfflineEvent = {
 
           userId:
             data?.userId ??
@@ -370,29 +546,33 @@ export class SignalRService {
             data?.lastSeen ??
             data?.LastSeen ??
             new Date().toISOString()
+
         };
 
 
         if (!event.userId) {
+
           return;
+
         }
 
 
-        // Remove from online users
         this.removeOnlineUser(
           event.userId
         );
 
 
-        // Notify subscribers
-        this.userOfflineSubject.next(event);
+        this.userOfflineSubject.next(
+          event
+        );
+
       }
     );
 
 
-    // =====================================================
+    // =======================================================
     // RECONNECTING
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.onreconnecting(
       (error) => {
@@ -401,13 +581,14 @@ export class SignalRService {
           'SignalR reconnecting...',
           error
         );
+
       }
     );
 
 
-    // =====================================================
+    // =======================================================
     // RECONNECTED
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.onreconnected(
       async (connectionId) => {
@@ -417,12 +598,6 @@ export class SignalRService {
           connectionId
         );
 
-
-        /*
-         * The connection may have changed.
-         *
-         * Refresh the complete online-user list.
-         */
 
         try {
 
@@ -434,14 +609,16 @@ export class SignalRService {
             'Failed to reload online users:',
             error
           );
+
         }
+
       }
     );
 
 
-    // =====================================================
+    // =======================================================
     // CONNECTION CLOSED
-    // =====================================================
+    // =======================================================
 
     this.hubConnection.onclose(
       (error) => {
@@ -457,134 +634,72 @@ export class SignalRService {
           console.warn(
             'SignalR connection closed unexpectedly.'
           );
+
         }
+
       }
     );
+
   }
 
 
   // =========================================================
-  // LOAD ONLINE USERS
+  // NORMALIZE STATUS
   // =========================================================
 
-  public async loadOnlineUsers(): Promise<void> {
+  private normalizeStatus(
+    status: unknown
+  ): MessageStatus | null {
+
+    if (
+      typeof status !==
+      'string'
+    ) {
+
+      return null;
+
+    }
+
+
+    switch (
+      status.toLowerCase()
+    ) {
+
+      case 'sent':
+        return 'Sent';
+
+      case 'delivered':
+        return 'Delivered';
+
+      case 'read':
+        return 'Read';
+
+      default:
+        return null;
+
+    }
+
+  }
+
+
+  // =========================================================
+  // CONNECTION CHECK
+  // =========================================================
+
+  private ensureConnection(): void {
 
     if (
       !this.hubConnection ||
       this.hubConnection.state !==
         signalR.HubConnectionState.Connected
     ) {
-      return;
+
+      throw new Error(
+        'SignalR connection is not initialized or connected.'
+      );
+
     }
 
-
-    try {
-
-      /*
-       * C#:
-       *
-       * public Task<string[]> GetOnlineUsers()
-       */
-
-      const userIds =
-        await this.hubConnection.invoke<string[]>(
-          'GetOnlineUsers'
-        );
-
-
-      console.log(
-        '🟢 Current online users:',
-        userIds
-      );
-
-
-      const users: UserOnlineEvent[] =
-        (userIds || [])
-          .map(userId => ({
-            userId
-          }));
-
-
-      this.onlineUsersSubject.next(
-        users
-      );
-
-    } catch (error) {
-
-      console.error(
-        'Error loading online users:',
-        error
-      );
-    }
-  }
-
-
-  // =========================================================
-  // ADD ONLINE USER
-  // =========================================================
-
-  private addOnlineUser(
-    user: UserOnlineEvent
-  ): void {
-
-    const currentUsers =
-      this.onlineUsersSubject.value;
-
-
-    const exists =
-      currentUsers.some(
-        x => x.userId === user.userId
-      );
-
-
-    if (exists) {
-      return;
-    }
-
-
-    this.onlineUsersSubject.next([
-      ...currentUsers,
-      user
-    ]);
-  }
-
-
-  // =========================================================
-  // REMOVE ONLINE USER
-  // =========================================================
-
-  private removeOnlineUser(
-    userId: string
-  ): void {
-
-    const currentUsers =
-      this.onlineUsersSubject.value;
-
-
-    const users =
-      currentUsers.filter(
-        x => x.userId !== userId
-      );
-
-
-    this.onlineUsersSubject.next(
-      users
-    );
-  }
-
-
-  // =========================================================
-  // CHECK USER ONLINE
-  // =========================================================
-
-  public isUserOnline(
-    userId: string
-  ): boolean {
-
-    return this.onlineUsersSubject.value
-      .some(
-        x => x.userId === userId
-      );
   }
 
 
@@ -602,6 +717,7 @@ export class SignalRService {
       throw new Error(
         'Receiver user ID is required.'
       );
+
     }
 
 
@@ -610,8 +726,117 @@ export class SignalRService {
       throw new Error(
         'Message content cannot be empty.'
       );
+
     }
 
+
+    this.ensureConnection();
+
+
+    await this.hubConnection!.invoke(
+      'SendMessage',
+      receiverUserId,
+      message
+    );
+
+  }
+
+
+  // =========================================================
+  // MARK DELIVERED
+  // =========================================================
+
+  public async markDelivered(
+    messageId: string
+  ): Promise<void> {
+
+    if (!messageId) {
+
+      return;
+
+    }
+
+
+    this.ensureConnection();
+
+
+    console.log(
+      'Marking message as Delivered:',
+      messageId
+    );
+
+
+    await this.hubConnection!.invoke(
+      'MarkMessageDelivered',
+      messageId
+    );
+
+  }
+
+
+  // =========================================================
+  // MARK READ
+  // =========================================================
+
+  public async markRead(
+    messageId: string
+  ): Promise<void> {
+
+    if (!messageId) {
+
+      return;
+
+    }
+
+
+    this.ensureConnection();
+
+
+    console.log(
+      'Marking message as Read:',
+      messageId
+    );
+
+
+    await this.hubConnection!.invoke(
+      'MarkMessageRead',
+      messageId
+    );
+
+  }
+
+
+  // =========================================================
+  // BACKWARD COMPATIBILITY
+  // =========================================================
+
+  public async markMessageDelivered(
+    messageId: string
+  ): Promise<void> {
+
+    await this.markDelivered(
+      messageId
+    );
+
+  }
+
+
+  public async markMessageRead(
+    messageId: string
+  ): Promise<void> {
+
+    await this.markRead(
+      messageId
+    );
+
+  }
+
+
+  // =========================================================
+  // LOAD ONLINE USERS
+  // =========================================================
+
+  public async loadOnlineUsers(): Promise<void> {
 
     if (
       !this.hubConnection ||
@@ -619,17 +844,128 @@ export class SignalRService {
         signalR.HubConnectionState.Connected
     ) {
 
-      throw new Error(
-        'SignalR connection is not initialized or connected.'
-      );
+      return;
+
     }
 
 
-    await this.hubConnection.invoke(
-      'SendMessage',
-      receiverUserId,
-      message
+    try {
+
+      const userIds =
+        await this.hubConnection.invoke<string[]>(
+          'GetOnlineUsers'
+        );
+
+
+      console.log(
+        'Current online users:',
+        userIds
+      );
+
+
+      const users:
+        UserOnlineEvent[] =
+        (userIds || [])
+          .map(
+            userId => ({
+              userId
+            })
+          );
+
+
+      this.onlineUsersSubject.next(
+        users
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Error loading online users:',
+        error
+      );
+
+    }
+
+  }
+
+
+  // =========================================================
+  // ADD ONLINE USER
+  // =========================================================
+
+  private addOnlineUser(
+    user: UserOnlineEvent
+  ): void {
+
+    const currentUsers =
+      this.onlineUsersSubject.value;
+
+
+    const exists =
+      currentUsers.some(
+        x =>
+          x.userId ===
+          user.userId
+      );
+
+
+    if (exists) {
+
+      return;
+
+    }
+
+
+    this.onlineUsersSubject.next([
+      ...currentUsers,
+      user
+    ]);
+
+  }
+
+
+  // =========================================================
+  // REMOVE ONLINE USER
+  // =========================================================
+
+  private removeOnlineUser(
+    userId: string
+  ): void {
+
+    const currentUsers =
+      this.onlineUsersSubject.value;
+
+
+    const users =
+      currentUsers.filter(
+        x =>
+          x.userId !==
+          userId
+      );
+
+
+    this.onlineUsersSubject.next(
+      users
     );
+
+  }
+
+
+  // =========================================================
+  // CHECK USER ONLINE
+  // =========================================================
+
+  public isUserOnline(
+    userId: string
+  ): boolean {
+
+    return this.onlineUsersSubject.value
+      .some(
+        x =>
+          x.userId ===
+          userId
+      );
+
   }
 
 
@@ -639,11 +975,14 @@ export class SignalRService {
 
   public async stopConnection(): Promise<void> {
 
-    this.manuallyStopped = true;
+    this.manuallyStopped =
+      true;
 
 
     if (!this.hubConnection) {
+
       return;
+
     }
 
 
@@ -660,10 +999,13 @@ export class SignalRService {
 
     } finally {
 
-      this.hubConnection = null;
+      this.hubConnection =
+        null;
 
       this.onlineUsersSubject.next([]);
 
     }
+
   }
+
 }

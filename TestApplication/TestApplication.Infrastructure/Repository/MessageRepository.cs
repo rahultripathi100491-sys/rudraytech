@@ -90,6 +90,7 @@ namespace TestApplication.Infrastructure.Repository
                 Id = Guid.NewGuid(),
                 ConversationId = conversationId.Value,
                 SenderId = senderId,
+                ReceiverId=receiverId,
                 Content = _encryptionService.Decrypt(content),
                 SentAt = DateTime.UtcNow
             };
@@ -125,6 +126,98 @@ namespace TestApplication.Infrastructure.Repository
                     UnreadCount = 0 // Connect your unread tracking logic here if needed
                 })
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<Message?> MarkAsDeliveredAsync(Guid messageId, Guid receiverUserId, CancellationToken cancellationToken)
+        {
+            var message =
+                await _context.Messages
+                    .FirstOrDefaultAsync(
+                        x =>
+                            x.Id == messageId &&
+                            x.ReceiverId == receiverUserId,
+                        cancellationToken);
+
+            if (message == null)
+            {
+                return null;
+            }
+
+            // Do not downgrade Read -> Delivered
+            if (message.Status == MessageStatus.Read)
+            {
+                return message;
+            }
+
+            // Sent -> Delivered
+            if (message.Status == MessageStatus.Sent)
+            {
+                message.Status =
+                    MessageStatus.Delivered;
+
+                message.DeliveredAt =
+                    DateTime.UtcNow;
+
+                await _context.SaveChangesAsync(
+                    cancellationToken);
+            }
+
+            return message;
+        }
+
+        public async Task<Message?> GetByIdAsync(Guid messageId, CancellationToken cancellationToken)
+        {
+            return await _context.Messages.FirstOrDefaultAsync(x => x.Id == messageId, cancellationToken);
+        }
+
+        public async Task UpdateStatusAsync(Message message, MessageStatus status, CancellationToken cancellationToken)
+        {
+            // Don't allow status to move backwards.
+            if (status < message.Status)
+            {
+                return;
+            }
+
+            if (status == MessageStatus.Delivered &&
+                message.Status < MessageStatus.Delivered)
+            {
+                message.Status = MessageStatus.Delivered;
+                message.DeliveredAt ??= DateTime.UtcNow;
+            }
+
+            if (status == MessageStatus.Read)
+            {
+                if (message.Status < MessageStatus.Delivered)
+                {
+                    message.Status = MessageStatus.Delivered;
+                    message.DeliveredAt ??= DateTime.UtcNow;
+                }
+
+                message.Status = MessageStatus.Read;
+                message.DeliveredAt ??= DateTime.UtcNow;
+                message.ReadAt ??= DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task<Message?> GetMessageForReceiverAsync(Guid messageId, Guid receiverUserId, CancellationToken cancellationToken)
+        {
+            // BREAKPOINT 1
+            System.Diagnostics.Debugger.Break();
+
+            var message =
+                await _context.Messages.FirstOrDefaultAsync(x => x.Id == messageId && x.ReceiverId == receiverUserId, cancellationToken);
+
+            // BREAKPOINT 2
+            System.Diagnostics.Debugger.Break();
+
+            return message;
+        }
+
+        public async Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

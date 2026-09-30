@@ -147,6 +147,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                     "https://rudraytech.lovestoblog.com", // Your hosted frontend domain
+                    "https://localhost:4200",              // Local development domain
                     "http://localhost:4200"              // Local development domain
                )
               .AllowAnyHeader()
@@ -154,6 +155,8 @@ builder.Services.AddCors(options =>
               .AllowCredentials(); // Required for SignalR WebSocket connections
     });
 });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
