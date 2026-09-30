@@ -5,6 +5,7 @@ import { Header } from './header/header';
 import { Footer } from './footer/footer';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs';
+import { OnlineUsersComponent } from './online-users/online-users';
 
 @Component({
   selector: 'app-root',

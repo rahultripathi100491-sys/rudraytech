@@ -27,6 +27,8 @@ export interface FriendSuggestion {
   name: string;
   profileImage?: string | null;
   mutualFriends: number;
+  isOnLine: boolean,
+  lastSeen: string
 }
 
 

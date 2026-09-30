@@ -136,6 +136,11 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<IFriendRepository, FriendRepository>();
 
+// User presence
+builder.Services.AddScoped<IUserPresenceService, UserPresenceService>();
+
+builder.Services.AddSingleton<UserPresenceService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>

@@ -6,12 +6,9 @@
 
   <section class="requests-container">
 
-    <!-- Header -->
-
     <div class="header">
 
       <div>
-
         <h2>
           Friend Requests
         </h2>
@@ -19,7 +16,6 @@
         <p>
           People who want to connect with you
         </p>
-
       </div>
 
     </div>
@@ -74,15 +70,31 @@
 
         <!-- Profile -->
 
-        <img
-          class="profile-image"
-          [src]="
-            request.profileImage ||
-            'assets/default-profile.png'
-          "
-          [alt]="request.name"
-          (error)="onImageError($event)"
-        />
+        <div class="profile-wrapper">
+
+          <img
+            class="profile-image"
+            [src]="
+              request.profileImage ||
+              'assets/default-profile.png'
+            "
+            [alt]="request.name"
+            (error)="onImageError($event)"
+          />
+
+          <!-- Online indicator -->
+
+          <span
+            class="online-dot"
+            [class.online]="
+              isFriendOnline(request.userId)
+            "
+            [class.offline]="
+              !isFriendOnline(request.userId)
+            ">
+          </span>
+
+        </div>
 
 
         <!-- User information -->
@@ -94,7 +106,24 @@
           </h3>
 
           <p>
-            Sent you a friend request
+            <span
+              [class.online-text]="
+                isFriendOnline(request.userId)
+              "
+              [class.offline-text]="
+                !isFriendOnline(request.userId)
+              ">
+
+              {{
+                isFriendOnline(request.userId)
+                  ? 'Online'
+                  : 'Offline'
+              }}
+
+            </span>
+
+            · Sent you a friend request
+
           </p>
 
         </div>
@@ -108,23 +137,24 @@
           [disabled]="
             isAccepting(request.friendshipId)
           "
-          (click)="acceptRequest(request)"
-        >
+          (click)="acceptRequest(request)">
 
           <span
             *ngIf="
               !isAccepting(request.friendshipId)
-            "
-          >
+            ">
+
             Accept
+
           </span>
 
           <span
             *ngIf="
               isAccepting(request.friendshipId)
-            "
-          >
+            ">
+
             Accepting...
+
           </span>
 
         </button>
@@ -167,7 +197,6 @@
   ====================================================== -->
 
   <section class="friends-container">
-
 
     <!-- Header -->
 
@@ -260,15 +289,31 @@
 
         <div class="profile-section">
 
-          <img
-            class="profile-image"
-            [src]="
-              friend.profileImage ||
-              'assets/default-profile.png'
-            "
-            [alt]="friend.name"
-            (error)="onImageError($event)"
-          />
+          <div class="profile-wrapper">
+
+            <img
+              class="profile-image"
+              [src]="
+                friend.profileImage ||
+                'assets/default-profile.png'
+              "
+              [alt]="friend.name"
+              (error)="onImageError($event)"
+            />
+
+            <!-- Online indicator -->
+
+            <span
+              class="online-dot"
+              [class.online]="
+                isFriendOnline(friend.userId)
+              "
+              [class.offline]="
+                !isFriendOnline(friend.userId)
+              ">
+            </span>
+
+          </div>
 
         </div>
 
@@ -281,6 +326,38 @@
             {{ friend.name }}
           </h3>
 
+
+          <!-- Online status -->
+
+          <p
+            class="friend-status"
+            [class.online-text]="
+              isFriendOnline(friend.userId)
+            "
+            [class.offline-text]="
+              !isFriendOnline(friend.userId)
+            ">
+
+            <span
+              class="status-small-dot"
+              [class.online]="
+                isFriendOnline(friend.userId)
+              "
+              [class.offline]="
+                !isFriendOnline(friend.userId)
+              ">
+            </span>
+
+            {{
+              isFriendOnline(friend.userId)
+                ? 'Online'
+                : 'Offline'
+            }}
+
+          </p>
+
+
+          <!-- Mutual friends -->
 
           <p class="mutual-friends">
 
@@ -309,8 +386,7 @@
           [disabled]="
             isLoading(friend.userId)
           "
-          (click)="addFriend(friend)"
-        >
+          (click)="addFriend(friend)">
 
           <span
             *ngIf="isLoading(friend.userId)"
@@ -319,16 +395,18 @@
 
 
           <span
-            *ngIf="!isLoading(friend.userId)"
-          >
+            *ngIf="!isLoading(friend.userId)">
+
             Add Friend
+
           </span>
 
 
           <span
-            *ngIf="isLoading(friend.userId)"
-          >
+            *ngIf="isLoading(friend.userId)">
+
             Sending...
+
           </span>
 
         </button>
@@ -373,182 +451,224 @@
 
   </section>
 
-</div>
-<div class="friends-container">
-
-  <!-- =====================================================
-       HEADER
-  ====================================================== -->
-
-  <div class="friends-header">
-
-    <div>
-      <h2>My Friends</h2>
-
-      <p>
-        People you are connected with
-      </p>
-    </div>
-
-    <button
-      type="button"
-      class="refresh-btn"
-      (click)="loadFriends()"
-      [disabled]="loadingFriends">
-
-      <span *ngIf="!loadingFriends">
-        Refresh
-      </span>
-
-      <span *ngIf="loadingFriends">
-        Loading...
-      </span>
-
-    </button>
-
-  </div>
 
 
   <!-- =====================================================
-       LOADING
+       MY FRIENDS
   ====================================================== -->
 
-  <div
-    *ngIf="loadingFriends"
-    class="loading-container">
+  <section class="friends-container">
 
-    <div class="spinner"></div>
+    <!-- Header -->
 
-    <span>
-      Loading your friends...
-    </span>
+    <div class="friends-header">
 
-  </div>
+      <div>
 
-
-  <!-- =====================================================
-       ERROR
-  ====================================================== -->
-
-  <div
-    *ngIf="friendsErrorMessage"
-    class="message error-message">
-
-    {{ friendsErrorMessage }}
-
-  </div>
-
-
-  <!-- =====================================================
-       SUCCESS
-  ====================================================== -->
-
-  <!-- <div
-    *ngIf="friendsSuccessMessage"
-    class="message success-message">
-
-    {{ friendsSuccessMessage }}
-
-  </div> -->
-
-
-  <!-- =====================================================
-       FRIEND LIST
-  ====================================================== -->
-
-  <div
-    *ngIf="
-      !loadingFriends &&
-      friends.length > 0
-    "
-    class="friends-grid">
-
-    <div
-      class="friend-card"
-      *ngFor="let friend of friends">
-
-
-      <!-- Profile -->
-
-      <div class="profile-section">
-
-        <img
-          class="profile-image"
-          [src]="
-            friend.profileImage ||
-            'assets/default-profile.png'
-          "
-          [alt]="friend.name"
-          (error)="onImageError($event)"
-        />
-
-      </div>
-
-
-      <!-- Friend Information -->
-
-      <div class="friend-info">
-
-        <h3>
-          {{ friend.name }}
-        </h3>
+        <h2>
+          My Friends
+        </h2>
 
         <p>
-          Friend
+          People you are connected with
         </p>
 
       </div>
 
 
-      <!-- Optional action -->
-
-      <!-- <button
+      <button
         type="button"
-        class="profile-button"
-        (click)="viewProfile(friend)">
+        class="refresh-btn"
+        (click)="loadFriends()"
+        [disabled]="loadingFriends">
 
-        View Profile
+        <span *ngIf="!loadingFriends">
+          Refresh
+        </span>
 
-      </button> -->
+        <span *ngIf="loadingFriends">
+          Loading...
+        </span>
+
+      </button>
 
     </div>
 
-  </div>
 
+    <!-- Loading -->
 
-  <!-- =====================================================
-       EMPTY
-  ====================================================== -->
+    <div
+      *ngIf="loadingFriends"
+      class="loading-container">
 
-  <div
-    *ngIf="
-      !loadingFriends &&
-      friends.length === 0 &&
-      !friendsErrorMessage
-    "
-    class="empty-state">
+      <div class="spinner"></div>
 
-    <div class="empty-icon">
-      👥
+      <span>
+        Loading your friends...
+      </span>
+
     </div>
 
-    <h3>
-      No friends yet
-    </h3>
 
-    <p>
-      You haven't added any friends yet.
-    </p>
+    <!-- Error -->
 
-    <button
-      type="button"
-      class="find-friends-button"
-      (click)="loadSuggestions()">
+    <div
+      *ngIf="friendsErrorMessage"
+      class="message error-message">
 
-      Find People
+      {{ friendsErrorMessage }}
 
-    </button>
+    </div>
 
-  </div>
+
+    <!-- =================================================
+         FRIEND LIST
+    ================================================== -->
+
+    <div
+      *ngIf="
+        !loadingFriends &&
+        friends.length > 0
+      "
+      class="friends-grid">
+
+      <div
+        class="friend-card"
+        *ngFor="let friend of friends">
+
+
+        <!-- Profile -->
+
+        <div class="profile-section">
+
+          <div class="profile-wrapper">
+
+            <img
+              class="profile-image"
+              [src]="
+                friend.profileImage ||
+                'assets/default-profile.png'
+              "
+              [alt]="friend.name"
+              (error)="onImageError($event)"
+            />
+
+
+            <!-- ONLINE / OFFLINE DOT -->
+
+            <span
+              class="online-dot"
+              [class.online]="
+                isFriendOnline(friend.userId)
+              "
+              [class.offline]="
+                !isFriendOnline(friend.userId)
+              ">
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <!-- Friend Information -->
+
+        <div class="friend-info">
+
+          <h3>
+            {{ friend.name }}
+          </h3>
+
+
+          <!-- ONLINE / OFFLINE TEXT -->
+
+          <p
+            class="friend-status"
+            [class.online-text]="
+              isFriendOnline(friend.userId)
+            "
+            [class.offline-text]="
+              !isFriendOnline(friend.userId)
+            ">
+
+            <span
+              class="status-small-dot"
+              [class.online]="
+                isFriendOnline(friend.userId)
+              "
+              [class.offline]="
+                !isFriendOnline(friend.userId)
+              ">
+            </span>
+
+            {{
+              isFriendOnline(friend.userId)
+                ? 'Online'
+                : 'Offline'
+            }}
+
+          </p>
+
+
+          <!-- Last seen -->
+
+          <p
+            *ngIf="
+              !isFriendOnline(friend.userId) &&
+              friend.lastSeen
+            "
+            class="last-seen">
+
+            Last seen:
+            {{
+              friend.lastSeen
+                | date:'medium'
+            }}
+
+          </p>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- =================================================
+         EMPTY
+    ================================================== -->
+
+    <div
+      *ngIf="
+        !loadingFriends &&
+        friends.length === 0 &&
+        !friendsErrorMessage
+      "
+      class="empty-state">
+
+      <div class="empty-icon">
+        👥
+      </div>
+
+      <h3>
+        No friends yet
+      </h3>
+
+      <p>
+        You haven't added any friends yet.
+      </p>
+
+      <button
+        type="button"
+        class="find-friends-button"
+        (click)="loadSuggestions()">
+
+        Find People
+
+      </button>
+
+    </div>
+
+  </section>
 
 </div>

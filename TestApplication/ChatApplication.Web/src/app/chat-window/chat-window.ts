@@ -10,7 +10,11 @@ import {
 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable, Subscription } from 'rxjs';
+
+import {
+  Observable,
+  Subscription
+} from 'rxjs';
 
 import {
   ChatService,
@@ -24,53 +28,102 @@ import {
 
 import { CallService } from '../services/call.service';
 
+import {
+  SignalRService,
+  UserOnlineEvent,
+  UserOfflineEvent
+} from '../services/signalr.service';
+
+import { User } from '../models/user';
+
+
 @Component({
   selector: 'app-chat-window',
+
   standalone: true,
+
   imports: [
     CommonModule,
     FormsModule
   ],
+
   templateUrl: './chat-window.html',
+
   styleUrls: ['./chat-window.css']
 })
 export class ChatWindowComponent
   implements OnInit, OnDestroy, AfterViewChecked {
 
-  protected chatService = inject(ChatService);
-  protected callService = inject(CallService);
+
+  // =========================================================
+  // SERVICES
+  // =========================================================
+
+  protected chatService =
+    inject(ChatService);
+
+  protected callService =
+    inject(CallService);
+
+  protected signalRService =
+    inject(SignalRService);
+
 
   // =========================================================
   // CALL STATE
   // =========================================================
 
-  public incomingCallUserId: string | null = null;
+  public incomingCallUserId:
+    string | null = null;
 
-  public incomingCallName: string = '';
+  public incomingCallName:
+    string = '';
 
-  public isCallActive$: Observable<boolean> =
+  public isCallActive$:
+    Observable<boolean> =
     this.callService.isCallActive$;
+
 
   // =========================================================
   // CHAT STATE
   // =========================================================
 
-  public showNewChatModal = false;
+  public showNewChatModal =
+    false;
 
-  public searchQuery = '';
+  public searchQuery =
+    '';
 
-  public searchResults: UserSearchResult[] = [];
+  public searchResults:
+    UserSearchResult[] = [];
 
-  public activeTargetUserId: string | null = null;
+  public activeTargetUserId:
+    string | null = null;
 
-  public activeTargetName: string = '';
+  public activeTargetName =
+    '';
 
-  public currentUserId: string =
+  public currentUserId:
+    string =
     localStorage.getItem('userId') || '';
 
-  public newMessageText = '';
+  public newMessageText =
+    '';
 
-  public isSending = false;
+  public isSending =
+    false;
+
+  public isLogin: boolean =
+    localStorage.getItem('isLogin') === 'true';
+
+
+  // =========================================================
+  // USERS
+  // =========================================================
+
+  public users:
+    User[] = [];
+
 
   // =========================================================
   // SCROLL
@@ -79,43 +132,133 @@ export class ChatWindowComponent
   @ViewChild('scrollContainer')
   private scrollContainer!: ElementRef;
 
+
   // =========================================================
   // OBSERVABLES
   // =========================================================
 
-  public conversations$: Observable<Conversation[]> =
+  public conversations$:
+    Observable<Conversation[]> =
     this.chatService.getConversations();
+
 
   // =========================================================
   // SUBSCRIPTIONS
   // =========================================================
 
-  private subscriptions = new Subscription();
+  private subscriptions =
+    new Subscription();
+
 
   // =========================================================
   // INIT
   // =========================================================
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+
+    // -------------------------------------------------------
+    // START SIGNALR
+    // -------------------------------------------------------
+
+    try {
+
+      await this.signalRService
+        .startConnection();
+
+      console.log(
+        'SignalR ready for presence.'
+      );
+
+    } catch (error) {
+
+      console.error(
+        'Failed to start SignalR:',
+        error
+      );
+    }
+
+
+    // -------------------------------------------------------
+    // LOAD USERS
+    // -------------------------------------------------------
+
+    await this.loadUsers();
+
+
+    // -------------------------------------------------------
+    // USER ONLINE
+    // -------------------------------------------------------
+
+    this.subscriptions.add(
+
+      this.signalRService
+        .userOnline$
+        .subscribe(
+          (user: UserOnlineEvent) => {
+
+            console.log(
+              '🟢 USER ONLINE:',
+              user
+            );
+
+            this.setUserOnline(
+              user.userId
+            );
+          }
+        )
+    );
+
+
+    // -------------------------------------------------------
+    // USER OFFLINE
+    // -------------------------------------------------------
+
+    this.subscriptions.add(
+
+      this.signalRService
+        .userOffline$
+        .subscribe(
+          (event: UserOfflineEvent) => {
+
+            console.log(
+              '⚪ USER OFFLINE:',
+              event
+            );
+
+            this.setUserOffline(
+              event.userId,
+              event.lastSeen
+            );
+          }
+        )
+    );
+
 
     // -------------------------------------------------------
     // CHAT MESSAGE CHANGES
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.chatService.activeMessages$
         .subscribe(() => {
+
           setTimeout(() => {
+
             this.scrollToBottom();
+
           });
+
         })
     );
+
 
     // -------------------------------------------------------
     // INCOMING CALL USER ID
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.callService.incomingCall$
         .subscribe((fromUserId) => {
 
@@ -125,11 +268,13 @@ export class ChatWindowComponent
         })
     );
 
+
     // -------------------------------------------------------
     // INCOMING CALL NAME
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.callService.incomingCallName$
         .subscribe((name) => {
 
@@ -139,11 +284,13 @@ export class ChatWindowComponent
         })
     );
 
+
     // -------------------------------------------------------
     // CALL ACCEPTED
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.callService.callAccepted$
         .subscribe((userId) => {
 
@@ -162,11 +309,13 @@ export class ChatWindowComponent
         })
     );
 
+
     // -------------------------------------------------------
     // CALL REJECTED
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.callService.callRejected$
         .subscribe((userId) => {
 
@@ -178,11 +327,13 @@ export class ChatWindowComponent
         })
     );
 
+
     // -------------------------------------------------------
     // CALL ENDED
     // -------------------------------------------------------
 
     this.subscriptions.add(
+
       this.callService.callEnded$
         .subscribe((userId) => {
 
@@ -195,13 +346,162 @@ export class ChatWindowComponent
     );
   }
 
+
+  // =========================================================
+  // LOAD USERS
+  // =========================================================
+
+  private async loadUsers(): Promise<void> {
+
+    /*
+     * Your conversations are currently loaded
+     * through ChatService.
+     *
+     * Do NOT load conversation history here because
+     * there may not be an activeTargetUserId yet.
+     *
+     * If you have a UserService.getUsers(), put it here.
+     */
+  }
+
+
+  // =========================================================
+  // USER ONLINE
+  // =========================================================
+
+  private setUserOnline(
+    userId: string
+  ): void {
+
+    if (!userId) {
+      return;
+    }
+
+
+    // -------------------------------------------------------
+    // Update users array if user exists
+    // -------------------------------------------------------
+
+    const user =
+      this.users.find(
+        x =>
+          String(x.id) ===
+          String(userId)
+      );
+
+
+    if (user) {
+
+      user.isOnLine = true;
+
+      console.log(
+        `🟢 ${user.firstName} ${user.lastName} is online`
+      );
+
+    } else {
+
+      console.log(
+        '🟢 User is online:',
+        userId
+      );
+    }
+  }
+
+
+  // =========================================================
+  // USER OFFLINE
+  // =========================================================
+
+  private setUserOffline(
+    userId: string,
+    lastSeen?: string
+  ): void {
+
+    if (!userId) {
+      return;
+    }
+
+
+    const user =
+      this.users.find(
+        x =>
+          String(x.id) ===
+          String(userId)
+      );
+
+
+    if (user) {
+
+      user.isOnLine = false;
+
+
+      if (lastSeen) {
+
+        user.lastSeen =
+          lastSeen;
+      }
+
+
+      console.log(
+        `⚪ ${user.firstName} ${user.lastName} is offline`
+      );
+
+    } else {
+
+      console.log(
+        '⚪ User is offline:',
+        userId
+      );
+    }
+  }
+
+
+  // =========================================================
+  // CHECK USER ONLINE
+  // =========================================================
+
+  public isUserOnline(
+    userId: string | null | undefined
+  ): boolean {
+
+    if (!userId) {
+      return false;
+    }
+
+
+    return this.signalRService
+      .isUserOnline(userId);
+  }
+
+
+  // =========================================================
+  // GET ACTIVE USER ONLINE STATUS
+  // =========================================================
+
+  public isActiveUserOnline(): boolean {
+
+    if (!this.activeTargetUserId) {
+      return false;
+    }
+
+
+    return this.signalRService
+      .isUserOnline(
+        this.activeTargetUserId
+      );
+  }
+
+
   // =========================================================
   // AFTER VIEW CHECKED
   // =========================================================
 
   ngAfterViewChecked(): void {
+
     this.scrollToBottom();
+
   }
+
 
   // =========================================================
   // NEW CHAT
@@ -214,7 +514,9 @@ export class ChatWindowComponent
     this.searchQuery = '';
 
     this.searchResults = [];
+
   }
+
 
   // =========================================================
   // CLOSE NEW CHAT
@@ -227,7 +529,9 @@ export class ChatWindowComponent
     this.searchQuery = '';
 
     this.searchResults = [];
+
   }
+
 
   // =========================================================
   // SEARCH USERS
@@ -238,12 +542,14 @@ export class ChatWindowComponent
     const query =
       this.searchQuery.trim();
 
+
     if (!query) {
 
       this.searchResults = [];
 
       return;
     }
+
 
     this.chatService
       .searchUsers(query)
@@ -270,6 +576,7 @@ export class ChatWindowComponent
       });
   }
 
+
   // =========================================================
   // SELECT CONVERSATION
   // =========================================================
@@ -283,8 +590,10 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.activeTargetUserId =
       targetUserId;
+
 
     if (targetName) {
 
@@ -293,11 +602,13 @@ export class ChatWindowComponent
 
     }
 
+
     this.chatService
       .loadConversationHistory(
         targetUserId
       );
   }
+
 
   // =========================================================
   // START CONVERSATION
@@ -312,17 +623,20 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.activeTargetUserId =
       targetUserId;
 
     this.activeTargetName =
       targetName || 'Chat';
 
+
     this.chatService
       .loadConversationHistory(
         targetUserId
       );
   }
+
 
   // =========================================================
   // SELECT USER AND START CHAT
@@ -336,19 +650,23 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.activeTargetUserId =
       user.id;
 
     this.activeTargetName =
       user.name || 'User';
 
+
     this.closeNewChatModal();
+
 
     this.chatService
       .loadConversationHistory(
         user.id
       );
   }
+
 
   // =========================================================
   // SEND MESSAGE
@@ -359,6 +677,7 @@ export class ChatWindowComponent
     const message =
       this.newMessageText.trim();
 
+
     if (
       !message ||
       !this.activeTargetUserId ||
@@ -367,19 +686,23 @@ export class ChatWindowComponent
       return;
     }
 
+
     const targetUserId =
       this.activeTargetUserId;
+
 
     this.newMessageText = '';
 
     this.isSending = true;
 
+
     try {
 
-      await this.chatService.sendMessage(
-        targetUserId,
-        message
-      );
+      await this.chatService
+        .sendMessage(
+          targetUserId,
+          message
+        );
 
     } catch (error) {
 
@@ -388,6 +711,7 @@ export class ChatWindowComponent
         error
       );
 
+
       this.newMessageText =
         message;
 
@@ -395,12 +719,16 @@ export class ChatWindowComponent
 
       this.isSending = false;
 
+
       setTimeout(() => {
+
         this.scrollToBottom();
+
       });
 
     }
   }
+
 
   // =========================================================
   // SCROLL
@@ -414,16 +742,21 @@ export class ChatWindowComponent
         return;
       }
 
+
       const element =
         this.scrollContainer.nativeElement;
+
 
       element.scrollTop =
         element.scrollHeight;
 
     } catch {
+
       // Ignore
+
     }
   }
+
 
   // =========================================================
   // START CALL
@@ -440,6 +773,7 @@ export class ChatWindowComponent
       return;
     }
 
+
     try {
 
       console.log(
@@ -447,9 +781,11 @@ export class ChatWindowComponent
         this.activeTargetUserId
       );
 
-      await this.callService.startCall(
-        this.activeTargetUserId
-      );
+
+      await this.callService
+        .startCall(
+          this.activeTargetUserId
+        );
 
     } catch (error) {
 
@@ -457,9 +793,9 @@ export class ChatWindowComponent
         'Failed to start call:',
         error
       );
-
     }
   }
+
 
   // =========================================================
   // ACCEPT INCOMING CALL
@@ -471,25 +807,29 @@ export class ChatWindowComponent
       return;
     }
 
+
     const callerId =
       this.incomingCallUserId;
+
 
     const callerName =
       this.incomingCallName ||
       'Caller';
 
-    // Set current chat to caller
+
     this.activeTargetUserId =
       callerId;
 
     this.activeTargetName =
       callerName;
 
+
     try {
 
-      await this.callService.acceptCall(
-        callerId
-      );
+      await this.callService
+        .acceptCall(
+          callerId
+        );
 
     } catch (error) {
 
@@ -497,9 +837,9 @@ export class ChatWindowComponent
         'Failed to accept call:',
         error
       );
-
     }
   }
+
 
   // =========================================================
   // REJECT INCOMING CALL
@@ -511,11 +851,13 @@ export class ChatWindowComponent
       return;
     }
 
+
     try {
 
-      await this.callService.rejectCall(
-        this.incomingCallUserId
-      );
+      await this.callService
+        .rejectCall(
+          this.incomingCallUserId
+        );
 
     } catch (error) {
 
@@ -523,13 +865,16 @@ export class ChatWindowComponent
         'Failed to reject call:',
         error
       );
-
     }
 
-    this.incomingCallUserId = null;
 
-    this.incomingCallName = '';
+    this.incomingCallUserId =
+      null;
+
+    this.incomingCallName =
+      '';
   }
+
 
   // =========================================================
   // END CALL
@@ -539,7 +884,8 @@ export class ChatWindowComponent
 
     try {
 
-      await this.callService.endCall();
+      await this.callService
+        .endCall();
 
     } catch (error) {
 
@@ -547,9 +893,9 @@ export class ChatWindowComponent
         'Failed to end call:',
         error
       );
-
     }
   }
+
 
   // =========================================================
   // DESTROY
@@ -560,4 +906,42 @@ export class ChatWindowComponent
     this.subscriptions.unsubscribe();
 
   }
+  getAvatarColor(text: string): string {
+  if (!text) {
+    return '#e5e7eb';
+  }
+
+  const colors = [
+    '#EF4444', // red
+    '#F97316', // orange
+    '#F59E0B', // amber
+    '#EAB308', // yellow
+    '#84CC16', // lime
+    '#22C55E', // green
+    '#10B981', // emerald
+    '#14B8A6', // teal
+    '#06B6D4', // cyan
+    '#0EA5E9', // sky
+    '#3B82F6', // blue
+    '#6366F1', // indigo
+    '#8B5CF6', // violet
+    '#A855F7', // purple
+    '#D946EF', // fuchsia
+    '#EC4899', // pink
+    '#F43F5E'  // rose
+  ];
+
+  let hash = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    hash =
+      text.charCodeAt(i) +
+      ((hash << 5) - hash);
+  }
+
+  const index =
+    Math.abs(hash) % colors.length;
+
+  return colors[index];
+}
 }

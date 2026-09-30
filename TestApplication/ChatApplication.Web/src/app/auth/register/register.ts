@@ -173,6 +173,8 @@ export class RegisterComponent {
 
     const user: User = {
 
+      id: '',
+
       firstName:
         formValue.firstName.trim(),
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using TestApplication.Application.Common.Command;
+using TestApplication.Application.Common.Services;
 using TestApplication.Infrastructure.Interface;
 
 namespace TestApplication.API.Hubs
@@ -12,96 +13,298 @@ namespace TestApplication.API.Hubs
     {
         private readonly ISender _mediator;
         private readonly IEncryptionService _encryptionService;
+        private readonly UserPresenceService _presence;
 
-        public ChatHub(ISender mediator, IEncryptionService encryptionService)
+        public ChatHub(
+            ISender mediator,
+            IEncryptionService encryptionService,
+            UserPresenceService presence)
         {
             _mediator = mediator;
             _encryptionService = encryptionService;
+            _presence = presence;
         }
 
-        public async Task JoinConversation(string ConversationId)
-        {
-            await Groups.AddToGroupAsync(Context.ConnectionId, ConversationId);
-        }
-        public async Task LeaveConversation(string ConversationId)
-        {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, ConversationId);
-        }
-        //public async Task SendMessage(string ConversationId, string SenderId, string Message)
-        //{
-        //    await Clients.Group(ConversationId)
-        //        .SendAsync("ReceiveMessage", new
-        //        {
-        //            ConversationId,
-        //            SenderId,
-        //            Message,
-        //            SentAt=DateTime.UtcNow
-        //        });
-        //}
-        public async Task SendMessage(string receiverUserId, string content)
-        {
-            var currentUserIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // =========================================================
+        // CONNECTED
+        // =========================================================
 
-            if (string.IsNullOrEmpty(currentUserIdClaim) || !Guid.TryParse(currentUserIdClaim, out var senderId))
+        public override async Task OnConnectedAsync()
+        {
+            var userId = Context.User?
+                .FindFirst(ClaimTypes.NameIdentifier)?
+                .Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
             {
-                throw new HubException("Unauthorized: Missing user identity claim.");
+                await base.OnConnectedAsync();
+                return;
             }
 
-            if (!Guid.TryParse(receiverUserId, out var targetId))
+            if (!Guid.TryParse(userId, out var userGuid))
             {
-                throw new HubException("Invalid receiver user ID.");
+                await base.OnConnectedAsync();
+                return;
             }
 
-            // Send Command via MediatR to save message to Database
+            // Add this connection to presence service
+            var becameOnline = _presence.AddConnection(
+                userId,
+                Context.ConnectionId
+            );
 
-            var encryptedMessage = _encryptionService.Encrypt(content);
-            var command = new SendMessageCommand(senderId, targetId, encryptedMessage);
-            var createdMessage = await _mediator.Send(command);
+            Console.WriteLine(
+                $"🟢 User connected: {userId}"
+            );
 
-            // Broadcast to target user connection/group
-            await Clients.User(receiverUserId).SendAsync("ReceiveMessage", createdMessage);
-            await Clients.User(currentUserIdClaim).SendAsync("ReceiveMessage", createdMessage);
+            // Only update DB + broadcast when
+            // the FIRST connection is established.
+            if (becameOnline)
+            {
+                // Update User.IsOnline = true
+                await _mediator.Send(
+                    new UpdateUserOnlineStatusCommand(
+                        userGuid,
+                        true
+                    )
+                );
+
+                // Notify everyone else
+                await Clients.Others.SendAsync(
+                    "UserOnline",
+                    userId
+                );
+            }
+
+            await base.OnConnectedAsync();
         }
-        public async Task SendTyping(string ConversationId, string UserId)
+
+        // =========================================================
+        // DISCONNECTED
+        // =========================================================
+
+        public override async Task OnDisconnectedAsync(
+            Exception? exception)
         {
-            await Clients.GroupExcept(ConversationId, Context.ConnectionId)
-                .SendAsync("UserTyping", UserId);
+            var userId = Context.User?
+                .FindFirst(ClaimTypes.NameIdentifier)?
+                .Value;
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                var becameOffline =
+                    _presence.RemoveConnection(
+                        userId,
+                        Context.ConnectionId
+                    );
+
+                Console.WriteLine(
+                    $"🔴 User disconnected: {userId}"
+                );
+
+                // Only update DB + broadcast when
+                // the LAST connection disappears.
+                if (becameOffline)
+                {
+                    if (Guid.TryParse(userId, out var userGuid))
+                    {
+                        // Update User.IsOnline = false
+                        await _mediator.Send(
+                            new UpdateUserOnlineStatusCommand(
+                                userGuid,
+                                false
+                            )
+                        );
+                    }
+
+                    await Clients.Others.SendAsync(
+                        "UserOffline",
+                        new
+                        {
+                            userId = userId,
+                            lastSeen = DateTime.UtcNow
+                        }
+                    );
+                }
+            }
+
+            await base.OnDisconnectedAsync(exception);
         }
-        public async Task UserOnline(string UserId)
+
+        // =========================================================
+        // GET ONLINE USERS
+        // =========================================================
+
+        public Task<string[]> GetOnlineUsers()
+        {
+            return Task.FromResult(
+                _presence.GetOnlineUsers()
+            );
+        }
+
+        // =========================================================
+        // CONVERSATION
+        // =========================================================
+
+        public async Task JoinConversation(
+            string conversationId)
+        {
+            await Groups.AddToGroupAsync(
+                Context.ConnectionId,
+                conversationId
+            );
+        }
+
+        public async Task LeaveConversation(
+            string conversationId)
+        {
+            await Groups.RemoveFromGroupAsync(
+                Context.ConnectionId,
+                conversationId
+            );
+        }
+
+        // =========================================================
+        // SEND MESSAGE
+        // =========================================================
+
+        public async Task SendMessage(
+            string receiverUserId,
+            string content)
+        {
+            var currentUserIdClaim =
+                Context.User?
+                    .FindFirst(ClaimTypes.NameIdentifier)?
+                    .Value;
+
+            if (
+                string.IsNullOrEmpty(currentUserIdClaim) ||
+                !Guid.TryParse(
+                    currentUserIdClaim,
+                    out var senderId)
+            )
+            {
+                throw new HubException(
+                    "Unauthorized: Missing user identity claim."
+                );
+            }
+
+            if (!Guid.TryParse(
+                    receiverUserId,
+                    out var targetId))
+            {
+                throw new HubException(
+                    "Invalid receiver user ID."
+                );
+            }
+
+            var encryptedMessage =
+                _encryptionService.Encrypt(content);
+
+            var command =
+                new SendMessageCommand(
+                    senderId,
+                    targetId,
+                    encryptedMessage
+                );
+
+            var createdMessage =
+                await _mediator.Send(command);
+
+            await Clients.User(receiverUserId)
+                .SendAsync(
+                    "ReceiveMessage",
+                    createdMessage
+                );
+
+            await Clients.User(currentUserIdClaim)
+                .SendAsync(
+                    "ReceiveMessage",
+                    createdMessage
+                );
+        }
+
+        // =========================================================
+        // TYPING
+        // =========================================================
+
+        public async Task SendTyping(
+            string conversationId,
+            string userId)
         {
             await Clients
-                .Others
-                .SendAsync("UserOnline", UserId);
+                .GroupExcept(
+                    conversationId,
+                    Context.ConnectionId)
+                .SendAsync(
+                    "UserTyping",
+                    userId
+                );
         }
-        public async Task UserOffline(string UserId)
+
+        // =========================================================
+        // CALLING
+        // =========================================================
+
+        public async Task SendOffer(
+            string targetUserId,
+            string offer) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "ReceiveOffer",
+                    Context.UserIdentifier,
+                    offer
+                );
+
+        public async Task SendAnswer(
+            string targetUserId,
+            string answer) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "ReceiveAnswer",
+                    Context.UserIdentifier,
+                    answer
+                );
+
+        public async Task SendIceCandidate(
+            string targetUserId,
+            string candidate) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "ReceiveIceCandidate",
+                    Context.UserIdentifier,
+                    candidate
+                );
+
+        public async Task RingUser(
+            string targetUserId) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "IncomingCall",
+                    Context.UserIdentifier
+                );
+
+        public async Task AcceptCall(
+            string targetUserId) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "CallAccepted",
+                    Context.UserIdentifier
+                );
+
+        public async Task RejectCall(
+            string targetUserId) =>
+            await Clients.User(targetUserId)
+                .SendAsync(
+                    "CallRejected",
+                    Context.UserIdentifier
+                );
+
+        public async Task EndCall(
+            string targetUserId)
         {
-            await Clients
-                .Others
-                .SendAsync("UserOffline", UserId);
-        }
-        public async Task SendOffer(string targetUserId, string offer) =>
-        await Clients.User(targetUserId).SendAsync("ReceiveOffer", Context.UserIdentifier, offer);
-
-        public async Task SendAnswer(string targetUserId, string answer) =>
-            await Clients.User(targetUserId).SendAsync("ReceiveAnswer", Context.UserIdentifier, answer);
-
-        public async Task SendIceCandidate(string targetUserId, string candidate) =>
-            await Clients.User(targetUserId).SendAsync("ReceiveIceCandidate", Context.UserIdentifier, candidate);
-
-        public async Task RingUser(string targetUserId) =>
-            await Clients.User(targetUserId).SendAsync("IncomingCall", Context.UserIdentifier);
-
-        public async Task AcceptCall(string targetUserId) =>
-            await Clients.User(targetUserId).SendAsync("CallAccepted", Context.UserIdentifier);
-
-        public async Task RejectCall(string targetUserId) =>
-            await Clients.User(targetUserId).SendAsync("CallRejected", Context.UserIdentifier);
-
-        // Make sure the method name matches 'EndCall' exactly (case-sensitive on invoke)
-        public async Task EndCall(string targetUserId)
-        {
-            // Example logic: Notify the receiving client that the call ended
-            await Clients.User(targetUserId).SendAsync("CallEnded");
+            await Clients.User(targetUserId)
+                .SendAsync("CallEnded");
         }
     }
 }

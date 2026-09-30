@@ -43,6 +43,7 @@ namespace TestApplication.Application.Common.Handler
             loginResponse.Email = user.Email;
             loginResponse.Token = _tokenService.GenerateToken(user);
             loginResponse.Expiry = DateTime.UtcNow.AddMinutes(60);
+            loginResponse.IsLogin = user.IsOnLine;
 
             return loginResponse;
         }

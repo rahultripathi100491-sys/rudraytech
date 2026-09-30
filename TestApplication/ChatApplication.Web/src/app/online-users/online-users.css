@@ -1,0 +1,102 @@
+.online-users {
+  width: 350px;
+  margin: 40px auto;
+  padding: 20px;
+
+  background: white;
+
+  border-radius: 12px;
+
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  margin: 0;
+}
+
+.count {
+  background: #16a34a;
+  color: white;
+
+  padding: 4px 10px;
+
+  border-radius: 20px;
+
+  font-size: 14px;
+}
+
+.user {
+  display: flex;
+
+  align-items: center;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #eee;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #2563eb;
+  color: white;
+
+  font-weight: bold;
+}
+
+.info {
+  margin-left: 12px;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.status {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  margin-top: 3px;
+
+  color: #16a34a;
+
+  font-size: 13px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: #16a34a;
+}
+
+.empty {
+  color: #777;
+
+  text-align: center;
+
+  padding: 30px;
+}
