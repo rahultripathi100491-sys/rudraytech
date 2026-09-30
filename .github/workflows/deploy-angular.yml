@@ -14,65 +14,149 @@ jobs:
 
     steps:
 
-      # ==============================
-      # Checkout
-      # ==============================
+      # =====================================================
+      # CHECKOUT
+      # =====================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # ==============================
-      # Node.js
-      # ==============================
+      # =====================================================
+      # NODE.JS
+      # =====================================================
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+          cache-dependency-path: ./TestApplication/ChatApplication.Web/package-lock.json
 
 
-      # ==============================
-      # Install dependencies
-      # ==============================
+      # =====================================================
+      # INSTALL DEPENDENCIES
+      # =====================================================
+
       - name: Install dependencies
         working-directory: ./TestApplication/ChatApplication.Web
         run: npm ci
 
 
-      # ==============================
-      # Angular production build
-      # ==============================
+      # =====================================================
+      # BUILD ANGULAR
+      # =====================================================
+
       - name: Build Angular Production
         working-directory: ./TestApplication/ChatApplication.Web
         run: npm run build -- --configuration production
 
 
-      # ==============================
-      # Verify build
-      # ==============================
+      # =====================================================
+      # SHOW BUILD OUTPUT
+      # =====================================================
+
       - name: Verify Angular build
+        working-directory: ./TestApplication/ChatApplication.Web
         run: |
-          echo "Checking Angular production files..."
+
+          echo "======================================"
+          echo "Angular build completed"
+          echo "======================================"
+
+          echo ""
+          echo "DIST CONTENT:"
+          find dist -maxdepth 4 -type f | sort
+
+          echo ""
+          echo "Checking index.html..."
+
+          test -f dist/ChatApplication.Web/browser/index.html
+
+          echo ""
+          echo "index.html found successfully."
+
+          echo ""
+          echo "Browser build files:"
+          find dist/ChatApplication.Web/browser -maxdepth 2 -type f | sort
+
+
+      # =====================================================
+      # CREATE WEB.CONFIG
+      # =====================================================
+      # Required for Angular routing on IIS.
+      # If InfinityFree is using Apache, this can be replaced
+      # with .htaccess configuration.
+
+      - name: Create Angular SPA fallback
+        working-directory: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
+        run: |
+
+          cat > .htaccess <<'EOF'
+          RewriteEngine On
+
+          RewriteBase /
+
+          # Do not rewrite existing files
+          RewriteCond %{REQUEST_FILENAME} -f [OR]
+          RewriteCond %{REQUEST_FILENAME} -d
+          RewriteRule ^ - [L]
+
+          # Angular SPA fallback
+          RewriteRule ^ index.html [L]
+          EOF
+
+          echo ".htaccess created"
+
+
+      # =====================================================
+      # VERIFY DEPLOYMENT DIRECTORY
+      # =====================================================
+
+      - name: Verify deployment directory
+        run: |
+
+          echo "======================================"
+          echo "DEPLOYMENT DIRECTORY"
+          echo "======================================"
 
           test -f ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/index.html
 
-          echo "Build successful!"
-          echo "Files:"
-          find ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser -maxdepth 1 -type f
+          ls -lah ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser
+
+          echo ""
+          echo "Total files:"
+          find ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser -type f | wc -l
 
 
-      # ==============================
-      # Deploy to InfinityFree
-      # ==============================
+      # =====================================================
+      # DEPLOY TO INFINITYFREE
+      # =====================================================
+
       - name: Deploy to InfinityFree
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
+
           server: ${{ secrets.INFINITY_FTP_HOST }}
+
           username: ${{ secrets.INFINITY_FTP_USERNAME }}
+
           password: ${{ secrets.INFINITY_FTP_PASSWORD }}
 
           protocol: ftp
+
           port: 21
 
           local-dir: ./TestApplication/ChatApplication.Web/dist/ChatApplication.Web/browser/
 
           server-dir: /
+
+          # Remove files from the server that no longer exist
+          # in the Angular build.
+          dangerous-clean-slate: false
+
+          # Upload everything
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
