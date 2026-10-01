@@ -1182,9 +1182,7 @@ export class ChatSignalRService {
   // MARK MESSAGE READ
   // =======================================================
 
-  async markMessageRead(
-    messageId: string
-  ): Promise<void> {
+  async markMessageRead(messageId: string): Promise<void> {
 
     if (!messageId) {
 
