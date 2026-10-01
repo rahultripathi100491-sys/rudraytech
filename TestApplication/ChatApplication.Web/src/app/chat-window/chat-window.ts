@@ -1497,9 +1497,7 @@ export class ChatWindowComponent
   // MARK MESSAGE READ
   // =========================================================
 
-  private async markMessageRead(
-    message: MessageWithStatus
-  ): Promise<void> {
+  private async markMessageRead(message: MessageWithStatus): Promise<void> {
 
     const messageId =
       this.getMessageId(message);
