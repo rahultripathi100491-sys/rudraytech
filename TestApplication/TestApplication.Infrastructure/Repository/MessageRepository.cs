@@ -37,22 +37,39 @@ namespace TestApplication.Infrastructure.Repository
             return conversationId == Guid.Empty ? null : conversationId;
         }
 
-        public async Task<List<MessageHistoryDto>> GetMessageHistoryByConversationIdAsync(Guid conversationId, CancellationToken cancellationToken = default)
+        public async Task<PaginatedResult<MessageHistoryDto>> GetMessageHistoryByConversationIdAsync(Guid conversationId, PaginationRequest pagination, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _context.Messages
-                    .AsNoTracking()
-                    .Where(x => x.ConversationId == conversationId)
-                    .OrderBy(x => x.SentAt)
+                var query = _context.Messages.AsNoTracking().Where(x => x.ConversationId == conversationId);
+
+                var totalCount = await query.CountAsync(cancellationToken);
+
+                var messages = await query.OrderByDescending(x => x.SentAt).Skip(
+                        (pagination.PageNumber - 1) * pagination.PageSize).Take(pagination.PageSize)
                     .Select(x => new MessageHistoryDto
                     {
                         Id = x.Id,
                         SenderUserId = x.SenderId,
                         Content = _encryptionService.Decrypt(x.Content),
-                        SentAtUtc = x.SentAt
+                        Status = x.Status,
+                        SentAtUtc = x.SentAt,
+                        DeliveredAt = x.DeliveredAt,
+                        ReadAt = x.ReadAt
                     })
                     .ToListAsync(cancellationToken);
+
+                // Database returns newest -> oldest.
+                // Reverse so Angular displays oldest -> newest.
+                messages.Reverse();
+
+                return new PaginatedResult<MessageHistoryDto>
+                {
+                    Items = messages,
+                    TotalCount = totalCount,
+                    PageNumber = pagination.PageNumber,
+                    PageSize = pagination.PageSize
+                };
             }
             catch(Exception ex)
             {

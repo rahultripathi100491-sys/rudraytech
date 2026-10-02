@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using TestApplication.Application.Messages.Queries;
+using TestApplication.Domain.Entity;
 
 namespace TestApplication.API.Controllers
 {
@@ -18,8 +19,8 @@ namespace TestApplication.API.Controllers
             _mediator = mediator;
         }
 
-        [HttpGet("history")]
-        public async Task<IActionResult> GetHistory([FromQuery] Guid targetUserId, CancellationToken cancellationToken)
+        [HttpPost("history")]
+        public async Task<IActionResult> GetHistory([FromQuery] Guid targetUserId, PaginationRequest paginationRequest, CancellationToken cancellationToken)
         {
             if (targetUserId == Guid.Empty)
             {
@@ -39,7 +40,7 @@ namespace TestApplication.API.Controllers
                 });
             }
 
-            var result = await _mediator.Send(new GetMessageHistoryQuery(currentUserId, targetUserId), cancellationToken);
+            var result = await _mediator.Send(new GetMessageHistoryQuery(currentUserId, targetUserId, paginationRequest, cancellationToken));
 
             return Ok(result);
         }

@@ -277,9 +277,7 @@
            MESSAGES
            ================================================= -->
 
-      <div
-        class="message-stream"
-        #scrollContainer>
+      <div class="message-stream" #scrollContainer (scroll)="onMessageScroll($event)">
 
         <div
           *ngFor="
@@ -335,7 +333,7 @@
                    Only display status for messages
                    sent by current user.
                    ======================================== -->
-
+                   
               <span
                 *ngIf="
                   msg.senderUserId &&
@@ -371,7 +369,6 @@
                     ? 'Read'
                     : ''
                 ">
-
 
                 <!-- SENDING -->
 

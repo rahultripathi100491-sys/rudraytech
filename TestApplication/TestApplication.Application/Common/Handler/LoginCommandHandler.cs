@@ -25,28 +25,72 @@ namespace TestApplication.Application.Common.Handler
 
             if (user == null)
             {
-                return null!; // User not found
+                return null!;
             }
-            var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.Password,request.Password);
+
+            var verificationResult = _passwordHasher.VerifyHashedPassword(
+               user,
+               user.Password,
+               request.Password
+            );
+
             if (verificationResult == PasswordVerificationResult.Failed)
             {
                 throw new UnauthorizedAccessException("Invalid email or password.");
             }
-            //Set user Online
-            await _userRepository.SetUserOnLine(user);
-            // 3. Generate token using TokenService
-            //var token = _tokenService.GenerateToken(user);
-            //var expiry = DateTime.UtcNow.AddMinutes(60);
-            var loginResponse = new LoginResponse();
-            loginResponse.UserId = user.Id;
-            loginResponse.UserName = user.FirstName + " " + user.LastName;
-            loginResponse.Email = user.Email;
-            loginResponse.Token = _tokenService.GenerateToken(user);
-            loginResponse.Expiry = DateTime.UtcNow.AddMinutes(60);
-            loginResponse.IsLogin = user.IsOnLine;
 
-            return loginResponse;
+            await _userRepository.SetUserOnLine(user);
+
+            // =====================================================
+            // ACCESS TOKEN
+            // =====================================================
+
+            var accessToken = _tokenService.GenerateToken(user);
+
+            var expiresAt = DateTime.UtcNow.AddMinutes(60);
+
+            // =====================================================
+            // REFRESH TOKEN
+            // =====================================================
+
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            var refreshTokenHash = _tokenService.HashToken(refreshToken);
+
+            var refreshDays = 7;
+
+            var refreshTokenEntity = new RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(refreshDays)
+            };
+
+            // =====================================================
+            // SAVE REFRESH TOKEN
+            // =====================================================
+
+            await _userRepository.AddRefreshTokenAsync(refreshTokenEntity, cancellationToken);
+
+            await _userRepository.SaveChangesAsync(cancellationToken);
+
+            // =====================================================
+            // RESULT
+            // =====================================================
+
+            return new LoginResponse
+            {
+                Token = accessToken,
+                RefreshToken = refreshToken,
+                UserId = user.Id,
+                UserName = user.FirstName,
+                Email = user.Email,
+                Expiry = expiresAt
+            };
         }
+
         private bool VerifyPassword(string inputPassword, string storedHash)
         {
             // Replace with BCrypt, Argon2, or ASP.NET Identity PasswordHasher evaluation

@@ -9,6 +9,7 @@ namespace TestApplication.Infrastructure.Interface
         Task<List<User>> SearchUsersAsync(string searchTerm, Guid currentUserId, CancellationToken cancellationToken);
         Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken);
         Task AddAsync(User user, CancellationToken cancellationToken);
+        Task AddRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken);
         Task SaveChangesAsync(CancellationToken cancellationToken);
         Task<User?> GetByIdAsync(Guid userId);
         Task UpdateAsync(User user);

@@ -2,6 +2,7 @@
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using TestApplication.Domain.Entity;
 using TestApplication.Infrastructure.Interface;
@@ -15,6 +16,17 @@ namespace TestApplication.Application.Common.Services
         public TokenService(IConfiguration configuration)
         {
             _configuration = configuration;
+        }
+
+        // =========================================================
+        // REFRESH TOKEN
+        // =========================================================
+
+        public string GenerateRefreshToken()
+        {
+            var bytes = RandomNumberGenerator.GetBytes(64);
+
+            return Convert.ToBase64String(bytes);
         }
 
         public string GenerateToken(User user)
@@ -40,6 +52,13 @@ namespace TestApplication.Application.Common.Services
                 signingCredentials: credentials);
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public string HashToken(string token)
+        {
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+
+            return Convert.ToBase64String(hash);
         }
     }
 }

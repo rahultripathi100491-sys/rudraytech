@@ -20,8 +20,7 @@ namespace TestApplication.Domain.Entity
         public DateTime? LastSeen { get; set; } = DateTime.UtcNow;
         public ICollection<ConversationMember> ConversationMembers { get; set; }
         = new List<ConversationMember>();
-
-        public ICollection<Message> Messages { get; set; }
-            = new List<Message>();
+        public ICollection<Message> Messages { get; set; } = new List<Message>();
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }
 }

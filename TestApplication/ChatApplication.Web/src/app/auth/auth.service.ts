@@ -1,25 +1,75 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { finalize, Observable, tap } from 'rxjs';
+import {
+  Observable,
+  tap
+} from 'rxjs';
 
 import { BASE_URL } from '../app.config';
-import { RegisterRequest } from '../models/registerrequest';
-import { RegisterResponse } from '../models/registerresponse';
-import { SignalRService } from '../services/signalr.service';
 
+import { RegisterRequest }
+  from '../models/registerrequest';
+
+import { RegisterResponse }
+  from '../models/registerresponse';
+
+import { SignalRService }
+  from '../services/signalr.service';
+
+
+// =========================================================
+// LOGIN REQUEST
+// =========================================================
 
 export interface LoginRequest {
+
   email?: string;
+
   password?: string;
 }
 
 
+// =========================================================
+// AUTH RESPONSE
+// =========================================================
+
 export interface AuthResponse {
+
+  /*
+   * Access JWT
+   */
   token: string;
+
   userId?: string;
+
   userName?: string;
+
   email?: string;
+
   isLogin: boolean;
+
+  /*
+   * Optional expiry returned by API.
+   */
+  expiresAt?: string;
+}
+
+
+// =========================================================
+// REFRESH RESPONSE
+// =========================================================
+
+export interface RefreshTokenResponse {
+
+  /*
+   * New access JWT
+   */
+  accessToken: string;
+
+  /*
+   * Optional expiry.
+   */
+  expiresAt?: string;
 }
 
 
@@ -28,13 +78,15 @@ export interface AuthResponse {
 })
 export class AuthService {
 
+
   // =========================================================
   // SERVICES
   // =========================================================
 
-  private http = inject(HttpClient);
+  private readonly http =
+    inject(HttpClient);
 
-  private signalRService =
+  private readonly signalRService =
     inject(SignalRService);
 
 
@@ -57,7 +109,14 @@ export class AuthService {
     return this.http
       .post<AuthResponse>(
         `${this.authUrl}/login`,
-        credentials
+        credentials,
+        {
+          /*
+           * Required if your backend sends the
+           * refresh token as an HttpOnly cookie.
+           */
+          withCredentials: true
+        }
       )
       .pipe(
 
@@ -68,6 +127,10 @@ export class AuthService {
             response
           );
 
+
+          // -------------------------------------------------
+          // Validate token
+          // -------------------------------------------------
 
           if (!response?.token) {
 
@@ -80,14 +143,14 @@ export class AuthService {
 
 
           // -------------------------------------------------
-          // Clear old authentication
+          // Clear previous authentication
           // -------------------------------------------------
 
           this.clearAuthentication();
 
 
           // -------------------------------------------------
-          // Save token
+          // Save access token
           // -------------------------------------------------
 
           localStorage.setItem(
@@ -145,15 +208,113 @@ export class AuthService {
           );
 
 
+          // -------------------------------------------------
+          // Save expiry if returned
+          // -------------------------------------------------
+
+          if (response.expiresAt) {
+
+            localStorage.setItem(
+              'tokenExpiresAt',
+              response.expiresAt
+            );
+          }
+
+
           console.log(
             'Authentication saved.'
           );
 
           console.log(
             'userId:',
-            localStorage.getItem('userId')
+            this.getUserId()
+          );
+        })
+      );
+  }
+
+
+  // =========================================================
+  // REFRESH TOKEN
+  // =========================================================
+  //
+  // IMPORTANT:
+  //
+  // This method does NOT automatically refresh the token.
+  //
+  // Your HttpInterceptor calls this method only when
+  // an API request receives HTTP 401.
+  //
+  // The refresh token should be stored by the backend
+  // as an HttpOnly cookie.
+  //
+  // =========================================================
+
+  refreshToken(): Observable<RefreshTokenResponse> {
+
+    console.log(
+      'Refreshing access token...'
+    );
+
+
+    return this.http
+      .post<RefreshTokenResponse>(
+        `${this.authUrl}/refresh`,
+        {},
+        {
+          /*
+           * Sends the HttpOnly refresh-token cookie
+           * to ASP.NET Core.
+           */
+          withCredentials: true
+        }
+      )
+      .pipe(
+
+        tap((response) => {
+
+          console.log(
+            'REFRESH RESPONSE:',
+            response
           );
 
+
+          if (!response?.accessToken) {
+
+            console.error(
+              'Refresh succeeded but accessToken is missing.'
+            );
+
+            return;
+          }
+
+
+          // -------------------------------------------------
+          // Save NEW access token
+          // -------------------------------------------------
+
+          localStorage.setItem(
+            'token',
+            response.accessToken
+          );
+
+
+          // -------------------------------------------------
+          // Save expiry
+          // -------------------------------------------------
+
+          if (response.expiresAt) {
+
+            localStorage.setItem(
+              'tokenExpiresAt',
+              response.expiresAt
+            );
+          }
+
+
+          console.log(
+            'New access token saved.'
+          );
         })
       );
   }
@@ -208,6 +369,18 @@ export class AuthService {
 
 
   // =========================================================
+  // GET TOKEN EXPIRY
+  // =========================================================
+
+  getTokenExpiresAt(): string | null {
+
+    return localStorage.getItem(
+      'tokenExpiresAt'
+    );
+  }
+
+
+  // =========================================================
   // CHECK LOGIN
   // =========================================================
 
@@ -224,6 +397,10 @@ export class AuthService {
   // =========================================================
   // LOGOUT
   // =========================================================
+  //
+  // SignalR must be disconnected BEFORE clearing the JWT.
+  //
+  // =========================================================
 
   logout(): Observable<void> {
 
@@ -232,105 +409,108 @@ export class AuthService {
     );
 
 
-    // IMPORTANT:
-    // Do NOT clear the JWT before stopping SignalR.
-    //
-    // SignalR needs to disconnect first so that the
-    // ASP.NET Core Hub receives OnDisconnectedAsync().
-    //
+    return new Observable<void>(
+      observer => {
 
-    return new Observable<void>((observer) => {
+        // ---------------------------------------------------
+        // FIRST: Stop SignalR
+        // ---------------------------------------------------
 
-      this.signalRService
-        .stopConnection()
+        this.signalRService
+          .stopConnection()
 
-        .then(() => {
+          .then(() => {
 
-          console.log(
-            'SignalR disconnected successfully.'
-          );
+            console.log(
+              'SignalR disconnected successfully.'
+            );
 
 
-          // -------------------------------------------------
-          // Now call backend logout
-          // -------------------------------------------------
+            // ------------------------------------------------
+            // SECOND: Backend logout
+            // ------------------------------------------------
 
-          this.http
-            .post<void>(
-              `${this.authUrl}/logout`,
-              {}
-            )
-            .subscribe({
+            this.http
+              .post<void>(
+                `${this.authUrl}/logout`,
+                {},
+                {
+                  /*
+                   * Sends refresh-token cookie so backend
+                   * can revoke it.
+                   */
+                  withCredentials: true
+                }
+              )
+              .subscribe({
 
-              next: () => {
+                next: () => {
 
-                console.log(
-                  'Backend logout successful.'
-                );
+                  console.log(
+                    'Backend logout successful.'
+                  );
 
-                observer.next();
+                  /*
+                   * Clear local authentication here.
+                   */
+                  this.clearAuthentication();
 
-                observer.complete();
-              },
+                  observer.next();
 
-
-              error: (error) => {
-
-                console.error(
-                  'Backend logout failed:',
-                  error
-                );
-
-                // Even if backend logout fails,
-                // clear local authentication.
-
-                observer.error(
-                  error
-                );
-              },
+                  observer.complete();
+                },
 
 
-              complete: () => {
+                error: (error) => {
 
-                this.clearAuthentication();
+                  console.error(
+                    'Backend logout failed:',
+                    error
+                  );
 
-              }
+                  /*
+                   * Even if backend logout fails,
+                   * make sure the browser is logged out.
+                   */
+                  this.clearAuthentication();
 
-            });
+                  /*
+                   * We can still consider the local logout
+                   * successful.
+                   */
+                  observer.next();
 
-        })
+                  observer.complete();
+                }
+              });
 
-        .catch((error) => {
+          })
 
-          console.error(
-            'Failed to stop SignalR:',
-            error
-          );
+          .catch((error) => {
 
-
-          // Still clear authentication
-          // so the user is logged out locally.
-
-          this.clearAuthentication();
+            console.error(
+              'Failed to stop SignalR:',
+              error
+            );
 
 
-          observer.error(
-            error
-          );
+            /*
+             * Always clear authentication.
+             */
+            this.clearAuthentication();
 
-        });
 
-    });
+            observer.next();
+
+            observer.complete();
+          });
+      }
+    );
   }
 
 
   // =========================================================
-  // SIMPLE LOGOUT
-  // =========================================================
-  //
-  // You can use this if your backend does not require
-  // a logout API call.
-  //
+  // SIMPLE LOCAL LOGOUT
   // =========================================================
 
   async logoutLocal(): Promise<void> {
@@ -341,8 +521,6 @@ export class AuthService {
 
 
     try {
-
-      // FIRST disconnect SignalR
 
       await this.signalRService
         .stopConnection();
@@ -356,10 +534,7 @@ export class AuthService {
 
     } finally {
 
-      // THEN clear authentication
-
       this.clearAuthentication();
-
     }
   }
 
@@ -368,7 +543,7 @@ export class AuthService {
   // CLEAR AUTHENTICATION
   // =========================================================
 
-  private clearAuthentication(): void {
+  clearAuthentication(): void {
 
     console.log(
       'Clearing authentication...'
@@ -376,11 +551,15 @@ export class AuthService {
 
 
     // -------------------------------------------------------
-    // Local storage
+    // LOCAL STORAGE
     // -------------------------------------------------------
 
     localStorage.removeItem(
       'token'
+    );
+
+    localStorage.removeItem(
+      'tokenExpiresAt'
     );
 
     localStorage.removeItem(
@@ -405,11 +584,15 @@ export class AuthService {
 
 
     // -------------------------------------------------------
-    // Session storage
+    // SESSION STORAGE
     // -------------------------------------------------------
 
     sessionStorage.removeItem(
       'token'
+    );
+
+    sessionStorage.removeItem(
+      'tokenExpiresAt'
     );
 
     sessionStorage.removeItem(
