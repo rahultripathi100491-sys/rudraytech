@@ -21,3 +21,19 @@ export interface MessageNotification {
   message: string;
   receivedAt: string;
 }
+export interface MessageHistoryDto {
+  id: string;
+  senderUserId: string;
+  content: string;
+  status: string | number;
+  sentAtUtc: string;
+  deliveredAt?: string | null;
+  readAt?: string | null;
+}
+export interface PagedResult<T> {
+  items: T[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}

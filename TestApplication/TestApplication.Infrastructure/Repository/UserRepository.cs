@@ -19,6 +19,11 @@ namespace TestApplication.Infrastructure.Repository
             await _context.Users.AddAsync(user, cancellationToken);
         }
 
+        public async Task AddRefreshTokenAsync(RefreshToken refreshToken, CancellationToken cancellationToken)
+        {
+            await _context.RefreshTokens.AddAsync(refreshToken, cancellationToken);
+        }
+
         public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken)
         {
             return await _context.Users.AnyAsync(x => x.Email == email, cancellationToken);

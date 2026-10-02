@@ -1,26 +1,91 @@
-import { Injectable, inject, NgZone } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, map } from 'rxjs';
+import {
+  Injectable,
+  inject,
+  NgZone
+} from '@angular/core';
 
-import { SignalRService } from './signalr.service';
+import {
+  HttpClient,
+  HttpParams
+} from '@angular/common/http';
+
+import {
+  Observable,
+  BehaviorSubject,
+  map
+} from 'rxjs';
+
+import {
+  SignalRService
+} from './signalr.service';
+
 import {
   ChatMessage,
   Conversation,
   MessageNotification
 } from '../models/chat-message';
 
-import { BASE_URL } from '../app.config';
+import {
+  BASE_URL
+} from '../app.config';
+
+
+// =============================================================
+// PAGINATION RESPONSE
+// =============================================================
+
+export interface PaginatedResult<T> {
+
+  items: T[];
+
+  totalCount: number;
+
+  pageNumber: number;
+
+  pageSize: number;
+
+  totalPages: number;
+
+}
+
+
+// =============================================================
+// USER SEARCH RESULT
+// =============================================================
+
+export interface UserSearchResult {
+
+  id: string;
+
+  name: string;
+
+  email: string;
+
+}
+
+
+// =============================================================
+// CHAT SERVICE
+// =============================================================
 
 @Injectable({
   providedIn: 'root'
 })
 export class ChatService {
 
-  private http = inject(HttpClient);
-  private signalRService = inject(SignalRService);
-  private ngZone = inject(NgZone);
+  private http =
+    inject(HttpClient);
 
-  private readonly apiUrl = `${BASE_URL}/messages`;
+  private signalRService =
+    inject(SignalRService);
+
+  private ngZone =
+    inject(NgZone);
+
+
+  private readonly apiUrl =
+    `${BASE_URL}/messages`;
+
 
   // =========================================================
   // ACTIVE CHAT MESSAGES
@@ -37,9 +102,27 @@ export class ChatService {
   // CURRENTLY OPEN CHAT
   // =========================================================
 
-  private activeTargetUserId: string | null = null;
+  private activeTargetUserId:
+    string | null = null;
 
-  private cachedConversations: Conversation[] = [];
+
+  private cachedConversations:
+    Conversation[] = [];
+
+
+  // =========================================================
+  // PAGINATION STATE
+  // =========================================================
+
+  private currentPage = 1;
+
+  private pageSize = 20;
+
+  private totalPages = 0;
+
+  private totalMessages = 0;
+
+  private isLoadingMessages = false;
 
 
   // =========================================================
@@ -48,6 +131,7 @@ export class ChatService {
 
   private unreadMessagesSubject =
     new BehaviorSubject<Record<string, number>>({});
+
 
   public unreadMessages$ =
     this.unreadMessagesSubject.asObservable();
@@ -60,14 +144,17 @@ export class ChatService {
   private notificationsSubject =
     new BehaviorSubject<MessageNotification[]>([]);
 
+
   public notifications$ =
     this.notificationsSubject.asObservable();
 
 
-  // Notification count
   public notificationCount$ =
     this.notifications$.pipe(
-      map(notifications => notifications.length)
+      map(
+        notifications =>
+          notifications.length
+      )
     );
 
 
@@ -80,13 +167,19 @@ export class ChatService {
     const token =
       localStorage.getItem('token') || '';
 
+
     if (token) {
-      this.signalRService.startConnection(token);
+
+      void this.signalRService
+        .startConnection(token);
+
     }
+
 
     this.listenForIncomingMessages();
 
     this.refreshConversationsCache();
+
   }
 
 
@@ -96,28 +189,31 @@ export class ChatService {
 
   public refreshConversationsCache(): void {
 
-    this.getConversations().subscribe({
+    this.getConversations()
+      .subscribe({
 
-      next: (conversations) => {
-
-        console.log(
-          'Conversation cache refreshed:',
+        next: (
           conversations
-        );
+        ) => {
 
-        this.cachedConversations = conversations || [];
-      },
+          this.cachedConversations =
+            conversations || [];
 
-      error: (error) => {
+        },
 
-        console.error(
-          'Failed to refresh conversation cache:',
+        error: (
           error
-        );
+        ) => {
 
-      }
+          console.error(
+            'Failed to refresh conversation cache:',
+            error
+          );
 
-    });
+        }
+
+      });
+
   }
 
 
@@ -131,27 +227,10 @@ export class ChatService {
     message: string
   ): void {
 
-    console.log('================================');
-    console.log('ADD MESSAGE NOTIFICATION');
-    console.log('================================');
-
-    console.log('Sender ID:', senderUserId);
-    console.log('Sender Name:', senderUserName);
-    console.log('Message:', message);
-
-
     const current =
-      this.notificationsSubject.getValue();
+      this.notificationsSubject
+        .getValue();
 
-    console.log(
-      'Notifications BEFORE:',
-      current
-    );
-
-
-    // ---------------------------------------------------------
-    // Resolve sender name if SignalR didn't send it
-    // ---------------------------------------------------------
 
     let resolvedName =
       senderUserName?.trim();
@@ -162,61 +241,44 @@ export class ChatService {
       const match =
         this.cachedConversations.find(
           conversation =>
-            conversation.participantUserId
+            conversation
+              .participantUserId
               ?.toLowerCase() ===
-            senderUserId?.toLowerCase()
+            senderUserId
+              ?.toLowerCase()
         );
 
 
       resolvedName =
         match?.participantName ||
         'User';
+
     }
 
 
-    // ---------------------------------------------------------
-    // Create notification
-    // ---------------------------------------------------------
+    const notification:
+      MessageNotification = {
 
-    const notification: MessageNotification = {
+      id:
+        crypto.randomUUID(),
 
-      id: crypto.randomUUID(),
+      senderUserId,
 
-      senderUserId: senderUserId,
+      senderUserName:
+        resolvedName,
 
-      senderUserName: resolvedName,
+      message,
 
-      message: message,
-
-      receivedAt: new Date().toISOString()
+      receivedAt:
+        new Date().toISOString()
 
     };
 
 
-    // ---------------------------------------------------------
-    // Add notification
-    // ---------------------------------------------------------
-
-    const updatedNotifications = [
+    this.notificationsSubject.next([
       notification,
       ...current
-    ];
-
-
-    console.log(
-      'Notifications AFTER:',
-      updatedNotifications
-    );
-
-
-    this.notificationsSubject.next(
-      updatedNotifications
-    );
-
-
-    console.log(
-      'Notification subject updated.'
-    );
+    ]);
 
   }
 
@@ -227,38 +289,25 @@ export class ChatService {
 
   private listenForIncomingMessages(): void {
 
-    this.signalRService.messageReceived$.subscribe(
+    this.signalRService
+      .messageReceived$
+      .subscribe(
 
-      (incomingMessage: ChatMessage) => {
+        (
+          incomingMessage: ChatMessage
+        ) => {
 
-        this.ngZone.run(() => {
+          this.ngZone.run(() => {
 
-          console.log(
-            '================================'
-          );
+            this.receiveLiveMessage(
+              incomingMessage
+            );
 
-          console.log(
-            'NEW SIGNALR MESSAGE'
-          );
+          });
 
-          console.log(
-            incomingMessage
-          );
+        }
 
-          console.log(
-            '================================'
-          );
-
-
-          this.receiveLiveMessage(
-            incomingMessage
-          );
-
-        });
-
-      }
-
-    );
+      );
 
   }
 
@@ -278,15 +327,70 @@ export class ChatService {
 
 
   // =========================================================
-  // GET MESSAGE HISTORY
+  // GET PAGINATED MESSAGE HISTORY
   // =========================================================
 
   public getMessageHistory(
-    targetUserId: string
-  ): Observable<ChatMessage[]> {
+    targetUserId: string,
+    pageNumber: number = 1,
+    pageSize: number = 20,
+    search: string = '',
+    sortBy: string = '',
+    sortDescending: boolean = true,
+    filters: Record<string, string> = {}
+  ): Observable<PaginatedResult<ChatMessage>> {
 
-    return this.http.get<ChatMessage[]>(
-      `${this.apiUrl}/history/?targetUserId=${targetUserId}`
+
+    /*
+     * IMPORTANT
+     *
+     * targetUserId is sent as query parameter.
+     *
+     * Pagination values are sent in POST body.
+     */
+
+    const params =
+      new HttpParams()
+        .set(
+          'targetUserId',
+          targetUserId
+        );
+
+
+    const body = {
+
+      pageNumber,
+
+      pageSize,
+
+      search,
+
+      sortBy,
+
+      sortDescending,
+
+      filters
+
+    };
+
+
+    console.log(
+      'GET MESSAGE HISTORY REQUEST:',
+      {
+        targetUserId,
+        body
+      }
+    );
+
+
+    return this.http.post<
+      PaginatedResult<ChatMessage>
+    >(
+      `${this.apiUrl}/history`,
+      body,
+      {
+        params
+      }
     );
 
   }
@@ -295,43 +399,564 @@ export class ChatService {
   // =========================================================
   // LOAD CONVERSATION HISTORY
   // =========================================================
+  //
+  // IMPORTANT:
+  //
+  // SECOND PARAMETER = PAGE NUMBER
+  //
+  // Example:
+  //
+  // loadConversationHistory(userId)
+  // => page 1, page size 20
+  //
+  // loadConversationHistory(userId, 2)
+  // => page 2, page size 20
+  //
+  // loadConversationHistory(userId, 3)
+  // => page 3, page size 20
+  //
+  // This fixes the old problem where:
+  //
+  // loadConversationHistory(userId, 2)
+  //
+  // was interpreted as:
+  //
+  // pageNumber = 1
+  // pageSize = 2
+  //
+  // =========================================================
 
   public loadConversationHistory(
-    targetUserId: string
+    targetUserId: string,
+    pageNumber: number = 1,
+    pageSize: number = 20
   ): void {
 
-    this.activeTargetUserId =
-      targetUserId;
+    if (!targetUserId) {
+      return;
+    }
 
 
-    // Clear unread messages when opening chat
-    this.clearUnreadMessages(
-      targetUserId
+    // ---------------------------------------------------------
+    // NEW CONVERSATION
+    // ---------------------------------------------------------
+
+    if (
+      this.activeTargetUserId !==
+        targetUserId
+    ) {
+
+      this.activeTargetUserId =
+        targetUserId;
+
+      this.currentPage =
+        1;
+
+      this.pageSize =
+        pageSize;
+
+      this.totalPages =
+        0;
+
+      this.totalMessages =
+        0;
+
+      this.clearUnreadMessages(
+        targetUserId
+      );
+
+      this.activeMessagesSubject.next([]);
+
+    }
+
+
+    // ---------------------------------------------------------
+    // SAME CONVERSATION - PAGE 1
+    // ---------------------------------------------------------
+
+    if (pageNumber === 1) {
+
+      this.activeTargetUserId =
+        targetUserId;
+
+      this.currentPage =
+        1;
+
+      this.pageSize =
+        pageSize;
+
+      this.totalPages =
+        0;
+
+      this.totalMessages =
+        0;
+
+      this.clearUnreadMessages(
+        targetUserId
+      );
+
+      this.activeMessagesSubject.next([]);
+
+    }
+
+
+    // ---------------------------------------------------------
+    // LOAD REQUESTED PAGE
+    // ---------------------------------------------------------
+
+    this.loadMessagesPage(
+      targetUserId,
+      pageNumber,
+      pageSize
+    );
+
+  }
+
+
+  // =========================================================
+  // LOAD NEXT PAGE
+  // =========================================================
+  //
+  // Used when scrolling to TOP.
+  //
+  // Page 1 = newest messages
+  // Page 2 = older messages
+  // Page 3 = even older messages
+  //
+  // Older messages are PREPENDED.
+  //
+  // =========================================================
+
+  public loadNextPage(): void {
+
+    if (!this.activeTargetUserId) {
+      return;
+    }
+
+
+    if (this.isLoadingMessages) {
+      return;
+    }
+
+
+    if (
+      this.totalPages > 0 &&
+      this.currentPage >=
+        this.totalPages
+    ) {
+
+      return;
+
+    }
+
+
+    const nextPage =
+      this.currentPage + 1;
+
+
+    this.loadMessagesPage(
+      this.activeTargetUserId,
+      nextPage,
+      this.pageSize
+    );
+
+  }
+
+
+  // =========================================================
+  // LOAD PREVIOUS PAGE
+  // =========================================================
+
+  public loadPreviousPage(): void {
+
+    if (!this.activeTargetUserId) {
+      return;
+    }
+
+
+    if (this.isLoadingMessages) {
+      return;
+    }
+
+
+    if (
+      this.currentPage <= 1
+    ) {
+
+      return;
+
+    }
+
+
+    const previousPage =
+      this.currentPage - 1;
+
+
+    this.loadMessagesPage(
+      this.activeTargetUserId,
+      previousPage,
+      this.pageSize
+    );
+
+  }
+
+
+  // =========================================================
+  // INTERNAL PAGINATED LOAD
+  // =========================================================
+
+  private loadMessagesPage(
+    targetUserId: string,
+    pageNumber: number,
+    pageSize: number
+  ): void {
+
+    if (this.isLoadingMessages) {
+      return;
+    }
+
+
+    this.isLoadingMessages =
+      true;
+
+
+    console.log(
+      'Loading message page:',
+      {
+        targetUserId,
+        pageNumber,
+        pageSize
+      }
     );
 
 
     this.getMessageHistory(
-      targetUserId
-    ).subscribe({
+      targetUserId,
+      pageNumber,
+      pageSize
+    )
+    .subscribe({
 
-      next: (messages) => {
+      // =====================================================
+      // SUCCESS
+      // =====================================================
 
-        this.activeMessagesSubject.next(
-          messages || []
+      next: (
+        result
+      ) => {
+
+        console.log(
+          'Message history response:',
+          result
         );
+
+
+        const messages =
+          (result?.items || [])
+            .map(
+              (message: any) =>
+                this.normalizeMessageStatus(
+                  message
+                )
+            );
+
+
+        // ---------------------------------------------------
+        // UPDATE PAGINATION STATE
+        // ---------------------------------------------------
+
+        this.currentPage =
+          result?.pageNumber ??
+          pageNumber;
+
+
+        this.pageSize =
+          result?.pageSize ??
+          pageSize;
+
+
+        this.totalPages =
+          result?.totalPages ??
+          0;
+
+
+        this.totalMessages =
+          result?.totalCount ??
+          0;
+
+
+        // ---------------------------------------------------
+        // CURRENT MESSAGES
+        // ---------------------------------------------------
+
+        const currentMessages =
+          this.activeMessagesSubject
+            .getValue() || [];
+
+
+        // ---------------------------------------------------
+        // PAGE 1
+        // ---------------------------------------------------
+        //
+        // First load replaces current messages.
+        //
+        // ---------------------------------------------------
+
+        if (
+          pageNumber === 1
+        ) {
+
+          this.activeMessagesSubject.next(
+            messages
+          );
+
+          return;
+
+        }
+
+
+        // ---------------------------------------------------
+        // PAGE > 1
+        // ---------------------------------------------------
+        //
+        // Older messages are inserted at TOP.
+        //
+        // ---------------------------------------------------
+
+        const existingIds =
+          new Set(
+            currentMessages
+              .map(
+                message =>
+                  message.id
+              )
+              .filter(
+                id =>
+                  id !== undefined &&
+                  id !== null
+              )
+          );
+
+
+        const newMessages =
+          messages.filter(
+            message => {
+
+              if (
+                message.id ===
+                  undefined ||
+                message.id === null
+              ) {
+
+                return true;
+
+              }
+
+
+              return !existingIds.has(
+                message.id
+              );
+
+            }
+          );
+
+
+        /*
+         * IMPORTANT:
+         *
+         * Older page goes BEFORE existing messages.
+         */
+
+        this.activeMessagesSubject.next([
+          ...newMessages,
+          ...currentMessages
+        ]);
 
       },
 
-      error: (error) => {
+
+      // =====================================================
+      // ERROR
+      // =====================================================
+
+      error: (
+        error
+      ) => {
 
         console.error(
           'Failed to load message history:',
           error
         );
 
+      },
+
+
+      // =====================================================
+      // COMPLETE
+      // =====================================================
+
+      complete: () => {
+
+        this.isLoadingMessages =
+          false;
+
       }
 
     });
+
+  }
+
+
+  // =========================================================
+  // NORMALIZE MESSAGE STATUS
+  // =========================================================
+
+  private normalizeMessageStatus(
+    message: any
+  ): ChatMessage {
+
+    let status:
+      string;
+
+
+    switch (
+      message?.status
+    ) {
+
+      case 0:
+      case '0':
+
+        status =
+          'sent';
+
+        break;
+
+
+      case 1:
+      case '1':
+
+        status =
+          'delivered';
+
+        break;
+
+
+      case 2:
+      case '2':
+
+        status =
+          'read';
+
+        break;
+
+
+      case 'sending':
+
+        status =
+          'sending';
+
+        break;
+
+
+      case 'sent':
+
+        status =
+          'sent';
+
+        break;
+
+
+      case 'delivered':
+
+        status =
+          'delivered';
+
+        break;
+
+
+      case 'read':
+
+        status =
+          'read';
+
+        break;
+
+
+      default:
+
+        status =
+          'sent';
+
+        break;
+
+    }
+
+
+    return {
+
+      ...message,
+
+      status
+
+    };
+
+  }
+
+
+  // =========================================================
+  // PAGINATION GETTERS
+  // =========================================================
+
+  public getCurrentPage(): number {
+
+    return this.currentPage;
+
+  }
+
+
+  public getPageSize(): number {
+
+    return this.pageSize;
+
+  }
+
+
+  public getTotalPages(): number {
+
+    return this.totalPages;
+
+  }
+
+
+  public getTotalMessages(): number {
+
+    return this.totalMessages;
+
+  }
+
+
+  public hasNextPage(): boolean {
+
+    return (
+      this.currentPage <
+      this.totalPages
+    );
+
+  }
+
+
+  public hasPreviousPage(): boolean {
+
+    return (
+      this.currentPage > 1
+    );
+
+  }
+
+
+  public getIsLoadingMessages(): boolean {
+
+    return this.isLoadingMessages;
 
   }
 
@@ -360,7 +985,8 @@ export class ChatService {
 
 
     const currentMessages =
-      this.activeMessagesSubject.getValue() || [];
+      this.activeMessagesSubject
+        .getValue() || [];
 
 
     const tempId =
@@ -370,13 +996,13 @@ export class ChatService {
     const optimisticMessage:
       ChatMessage = {
 
-      id: tempId,
+      id:
+        tempId,
 
       senderUserId:
         currentUserId,
 
-      receiverUserId:
-        receiverUserId,
+      receiverUserId,
 
       content:
         message,
@@ -387,10 +1013,6 @@ export class ChatService {
     };
 
 
-    // ---------------------------------------------------------
-    // Optimistic UI
-    // ---------------------------------------------------------
-
     this.activeMessagesSubject.next([
       ...currentMessages,
       optimisticMessage
@@ -399,10 +1021,11 @@ export class ChatService {
 
     try {
 
-      await this.signalRService.sendMessage(
-        receiverUserId,
-        message
-      );
+      await this.signalRService
+        .sendMessage(
+          receiverUserId,
+          message
+        );
 
     }
 
@@ -414,13 +1037,13 @@ export class ChatService {
       );
 
 
-      // Remove optimistic message
       const reverted =
         this.activeMessagesSubject
           .getValue()
           .filter(
-            message =>
-              message.id !== tempId
+            currentMessage =>
+              currentMessage.id !==
+              tempId
           );
 
 
@@ -447,10 +1070,6 @@ export class ChatService {
     const raw =
       incomingMessage as any;
 
-
-    // =======================================================
-    // NORMALIZE SIGNALR FIELD NAMES
-    // =======================================================
 
     const senderUserId =
       raw.senderUserId ??
@@ -484,14 +1103,11 @@ export class ChatService {
       '';
 
 
-    // =======================================================
-    // NORMALIZE IDS
-    // =======================================================
-
     const currentUserId =
       (
-        localStorage.getItem('userId') ||
-        ''
+        localStorage.getItem(
+          'userId'
+        ) || ''
       ).toLowerCase();
 
 
@@ -512,49 +1128,6 @@ export class ChatService {
         .toLowerCase();
 
 
-    // =======================================================
-    // DEBUG
-    // =======================================================
-
-    console.log(
-      '========== MESSAGE DETAILS =========='
-    );
-
-    console.log(
-      'senderUserId:',
-      senderUserId
-    );
-
-    console.log(
-      'receiverUserId:',
-      receiverUserId
-    );
-
-    console.log(
-      'content:',
-      content
-    );
-
-    console.log(
-      'senderUserName:',
-      senderUserName
-    );
-
-    console.log(
-      'currentUserId:',
-      currentUserId
-    );
-
-    console.log(
-      'activeTargetId:',
-      activeTargetId
-    );
-
-
-    // =======================================================
-    // VALIDATE MESSAGE
-    // =======================================================
-
     if (
       !senderUserId ||
       !content
@@ -570,43 +1143,22 @@ export class ChatService {
     }
 
 
-    // =======================================================
-    // CHECK MESSAGE TYPE
-    // =======================================================
-
     const isSelf =
-      senderIdLower === currentUserId;
+      senderIdLower ===
+      currentUserId;
 
 
     const isFromActiveTarget =
       activeTargetId !== '' &&
-      senderIdLower === activeTargetId;
+      senderIdLower ===
+        activeTargetId;
 
 
     const isToActiveTarget =
       activeTargetId !== '' &&
-      receiverIdLower === activeTargetId;
+      receiverIdLower ===
+        activeTargetId;
 
-
-    console.log(
-      'isSelf:',
-      isSelf
-    );
-
-    console.log(
-      'isFromActiveTarget:',
-      isFromActiveTarget
-    );
-
-    console.log(
-      'isToActiveTarget:',
-      isToActiveTarget
-    );
-
-
-    // =======================================================
-    // ADD MESSAGE TO CURRENT CHAT
-    // =======================================================
 
     if (
       isFromActiveTarget ||
@@ -619,36 +1171,27 @@ export class ChatService {
           .getValue() || [];
 
 
-      // -----------------------------------------------------
-      // Remove optimistic message
-      // -----------------------------------------------------
-
       const cleanedMessages =
         currentMessages.filter(
           message =>
             !(
-              message.id?.startsWith('temp-') &&
-              message.content === content
+              String(message.id)
+                .startsWith('temp-') &&
+              message.content ===
+                content
             )
         );
 
-
-      // -----------------------------------------------------
-      // Check duplicate
-      // -----------------------------------------------------
 
       const exists =
         cleanedMessages.some(
           message =>
             message.id &&
             incomingMessage.id &&
-            message.id === incomingMessage.id
+            String(message.id) ===
+              String(incomingMessage.id)
         );
 
-
-      // -----------------------------------------------------
-      // Add real message
-      // -----------------------------------------------------
 
       if (!exists) {
 
@@ -657,14 +1200,11 @@ export class ChatService {
 
           ...incomingMessage,
 
-          senderUserId:
-            senderUserId,
+          senderUserId,
 
-          receiverUserId:
-            receiverUserId,
+          receiverUserId,
 
-          content:
-            content
+          content
 
         };
 
@@ -677,20 +1217,10 @@ export class ChatService {
       }
 
 
-      // -----------------------------------------------------
-      // IMPORTANT:
-      // If user is currently viewing this conversation,
-      // don't show notification.
-      // -----------------------------------------------------
-
       if (
         isFromActiveTarget ||
         isSelf
       ) {
-
-        console.log(
-          'Message belongs to active chat. No notification.'
-        );
 
         return;
 
@@ -700,7 +1230,7 @@ export class ChatService {
 
 
     // =======================================================
-    // CREATE NOTIFICATION
+    // NOTIFICATION
     // =======================================================
 
     if (
@@ -708,46 +1238,17 @@ export class ChatService {
       senderUserId
     ) {
 
-      console.log(
-        '================================'
-      );
-
-      console.log(
-        'CREATING NOTIFICATION'
-      );
-
-      console.log(
-        '================================'
-      );
-
-
-      // -----------------------------------------------------
-      // Increase unread count
-      // -----------------------------------------------------
-
       this.incrementUnreadMessages(
         senderUserId
       );
 
 
-      // -----------------------------------------------------
-      // Add notification
-      // -----------------------------------------------------
-
       this.addMessageNotification(
-
         senderUserId,
-
         senderUserName,
-
         content
-
       );
 
-
-      // -----------------------------------------------------
-      // Browser notification
-      // -----------------------------------------------------
 
       this.showBrowserNotification({
 
@@ -767,7 +1268,7 @@ export class ChatService {
 
 
   // =========================================================
-  // INCREMENT UNREAD MESSAGE COUNT
+  // INCREMENT UNREAD
   // =========================================================
 
   private incrementUnreadMessages(
@@ -779,38 +1280,28 @@ export class ChatService {
 
 
     const current =
-      this.unreadMessagesSubject.value;
+      this.unreadMessagesSubject
+        .value;
 
 
     const currentCount =
       current[normalizedId] || 0;
 
 
-    const updated = {
+    this.unreadMessagesSubject.next({
 
       ...current,
 
       [normalizedId]:
         currentCount + 1
 
-    };
-
-
-    console.log(
-      'Unread messages updated:',
-      updated
-    );
-
-
-    this.unreadMessagesSubject.next(
-      updated
-    );
+    });
 
   }
 
 
   // =========================================================
-  // CLEAR UNREAD MESSAGE COUNT
+  // CLEAR UNREAD
   // =========================================================
 
   public clearUnreadMessages(
@@ -822,12 +1313,16 @@ export class ChatService {
 
 
     const current = {
-      ...this.unreadMessagesSubject.value
+
+      ...this.unreadMessagesSubject
+        .value
+
     };
 
 
     if (
-      current[normalizedId] === undefined
+      current[normalizedId] ===
+      undefined
     ) {
 
       return;
@@ -866,7 +1361,7 @@ export class ChatService {
 
 
   // =========================================================
-  // GET TOTAL UNREAD COUNT
+  // GET TOTAL UNREAD
   // =========================================================
 
   public getTotalUnreadCount(): number {
@@ -876,7 +1371,10 @@ export class ChatService {
         this.unreadMessagesSubject.value
       )
       .reduce(
-        (total, count) =>
+        (
+          total,
+          count
+        ) =>
           total + count,
         0
       );
@@ -885,7 +1383,7 @@ export class ChatService {
 
 
   // =========================================================
-  // REMOVE ONE NOTIFICATION
+  // REMOVE NOTIFICATION
   // =========================================================
 
   public removeNotification(
@@ -893,23 +1391,22 @@ export class ChatService {
   ): void {
 
     const current =
-      this.notificationsSubject.getValue();
+      this.notificationsSubject
+        .getValue();
 
 
     this.notificationsSubject.next(
-
       current.filter(
         notification =>
           notification.id !== id
       )
-
     );
 
   }
 
 
   // =========================================================
-  // CLEAR ALL NOTIFICATIONS
+  // CLEAR NOTIFICATIONS
   // =========================================================
 
   public clearNotifications(): void {
@@ -933,7 +1430,7 @@ export class ChatService {
 
 
   // =========================================================
-  // SHOW BROWSER NOTIFICATION
+  // BROWSER NOTIFICATION
   // =========================================================
 
   private showBrowserNotification(
@@ -941,7 +1438,8 @@ export class ChatService {
   ): void {
 
     if (
-      typeof Notification === 'undefined'
+      typeof Notification ===
+      'undefined'
     ) {
 
       return;
@@ -950,7 +1448,8 @@ export class ChatService {
 
 
     if (
-      Notification.permission !== 'granted'
+      Notification.permission !==
+      'granted'
     ) {
 
       return;
@@ -962,13 +1461,11 @@ export class ChatService {
       new Notification(
         'New Message',
         {
-
           body:
             message.content,
 
           icon:
             'assets/icons/chat.png'
-
         }
       );
 
@@ -992,7 +1489,8 @@ export class ChatService {
     Promise<void> {
 
     if (
-      typeof Notification === 'undefined'
+      typeof Notification ===
+      'undefined'
     ) {
 
       return;
@@ -1001,10 +1499,12 @@ export class ChatService {
 
 
     if (
-      Notification.permission === 'default'
+      Notification.permission ===
+      'default'
     ) {
 
-      await Notification.requestPermission();
+      await Notification
+        .requestPermission();
 
     }
 
@@ -1017,7 +1517,21 @@ export class ChatService {
 
   public closeChat(): void {
 
-    this.activeTargetUserId = null;
+    this.activeTargetUserId =
+      null;
+
+
+    this.currentPage =
+      1;
+
+
+    this.totalPages =
+      0;
+
+
+    this.totalMessages =
+      0;
+
 
     this.activeMessagesSubject.next([]);
 
@@ -1032,25 +1546,12 @@ export class ChatService {
     query: string
   ): Observable<UserSearchResult[]> {
 
-    return this.http.get<UserSearchResult[]>(
-      `${BASE_URL}/user/SearchUsers/search?q=${query}`
+    return this.http.get<
+      UserSearchResult[]
+    >(
+      `${BASE_URL}/user/SearchUsers/search?q=${encodeURIComponent(query)}`
     );
 
   }
-
-}
-
-
-// =============================================================
-// USER SEARCH RESULT
-// =============================================================
-
-export interface UserSearchResult {
-
-  id: string;
-
-  name: string;
-
-  email: string;
 
 }

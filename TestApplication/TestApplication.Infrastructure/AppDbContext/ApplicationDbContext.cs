@@ -17,6 +17,7 @@ namespace TestApplication.Infrastructure.AppDbContext
         public DbSet<Friendship> Friendships { get; set; }
         public DbSet<PostLike> PostLikes { get; set; }
         public DbSet<PostComment> PostComments { get; set; }
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -77,6 +78,27 @@ namespace TestApplication.Infrastructure.AppDbContext
                 .WithMany()
                 .HasForeignKey(x => x.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // =====================================================
+            // REFRESH TOKEN
+            // =====================================================
+
+            modelBuilder.Entity<RefreshToken>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.TokenHash)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.TokenHash)
+                    .IsUnique();
+
+
+                entity.HasOne(x => x.User)
+                    .WithMany(x => x.RefreshTokens)
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
