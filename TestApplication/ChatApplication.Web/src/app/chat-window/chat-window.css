@@ -497,35 +497,88 @@ app-chat {
    ========================================================= */
 
 .call-actions {
-  flex-shrink: 0;
-
   margin-left: auto;
 
   display: flex;
   align-items: center;
 
-  gap: 0.5rem;
+  gap: 12px;
+
+  flex-shrink: 0;
 }
 
-.voice-call-button,
-.video-call-button {
-  border: none;
+.call-icon-button {
+  width: 48px;
+  height: 48px;
 
-  padding: 0.5rem 0.9rem;
+  padding: 0;
 
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 50%;
 
   color: #fff;
 
   cursor: pointer;
 
-  font-size: 0.85rem;
-  font-weight: 500;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
 }
 
-.voice-call-button {
-  background: #198754;
+.call-icon-button svg {
+  width: 23px;
+  height: 23px;
+
+  fill: currentColor;
 }
+
+.call-icon-button:hover {
+  transform: scale(1.07);
+}
+
+.call-icon-button:active {
+  transform: scale(0.94);
+}
+
+.call-icon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* WhatsApp-style green voice button */
+
+.voice-call-button {
+  background: #25d366;
+
+  box-shadow:
+    0 3px 10px rgba(37, 211, 102, 0.35);
+}
+
+.voice-call-button:hover {
+  background: #20bd5a;
+}
+
+
+/* Messenger/Instagram-style blue video button */
+
+.video-call-button {
+  background: #0084ff;
+
+  box-shadow:
+    0 3px 10px rgba(0, 132, 255, 0.35);
+}
+
+.video-call-button:hover {
+  background: #0074e0;
+}
+
 
 .voice-call-button:hover {
   background: #157347;
@@ -1010,7 +1063,7 @@ app-chat {
    FULLSCREEN CALL
    ========================================================= */
 
-.fullscreen-call {
+/* .fullscreen-call {
   position: fixed;
 
   inset: 0;
@@ -1020,7 +1073,410 @@ app-chat {
   background: #111;
 
   overflow: hidden;
+} */
+
+/* =========================================================
+   FULLSCREEN VIDEO CALL
+   ========================================================= */
+
+.fullscreen-call {
+  position: fixed;
+
+  inset: 0;
+
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+
+  z-index: 11000;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #000;
+
+  overflow: hidden;
 }
+
+
+/* =========================================================
+   FULLSCREEN REMOTE VIDEO
+   ========================================================= */
+
+.fullscreen-call .remote-video {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  max-width: none;
+
+  display: block;
+
+  object-fit: cover;
+
+  background: #000;
+
+  border: 0;
+
+  border-radius: 0;
+
+  z-index: 1;
+}
+
+
+/* =========================================================
+   LOCAL VIDEO PREVIEW
+   ========================================================= */
+
+.fullscreen-call .local-video {
+  position: absolute;
+
+  top: 24px;
+  right: 24px;
+
+  width: 180px;
+  height: 125px;
+
+  object-fit: cover;
+
+  background: #222;
+
+  border: 2px solid rgba(255, 255, 255, 0.9);
+
+  border-radius: 12px;
+
+  z-index: 10;
+
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.45);
+}
+
+
+/* =========================================================
+   CALL TOP INFO
+   ========================================================= */
+
+.fullscreen-call .active-call-info {
+  position: absolute;
+
+  top: 24px;
+  left: 24px;
+
+  z-index: 10;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 9px 14px;
+
+  background: rgba(0, 0, 0, 0.45);
+
+  color: #fff;
+
+  border-radius: 10px;
+
+  backdrop-filter: blur(8px);
+}
+
+.fullscreen-call .active-call-status {
+  color: #fff;
+
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+/* =========================================================
+   BOTTOM CALL CONTROLS
+   ========================================================= */
+
+.fullscreen-call .call-controls {
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 20;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  padding: 24px 20px 30px;
+
+  background:
+    linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.8),
+      rgba(0, 0, 0, 0)
+    );
+
+  pointer-events: none;
+}
+
+.fullscreen-call .call-controls > * {
+  pointer-events: auto;
+}
+
+
+/* =========================================================
+   CALL CONTROL BUTTON
+   ========================================================= */
+
+.fullscreen-call .call-control-btn {
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: rgba(255, 255, 255, 0.18);
+
+  color: #fff;
+
+  cursor: pointer;
+
+  font-size: 20px;
+
+  backdrop-filter: blur(8px);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.fullscreen-call .call-control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+
+  transform: scale(1.05);
+}
+
+.fullscreen-call .call-control-btn:active {
+  transform: scale(0.95);
+}
+
+
+/* =========================================================
+   MICROPHONE OFF
+   ========================================================= */
+
+.fullscreen-call .call-control-btn.muted {
+  background: #dc3545;
+}
+
+
+/* =========================================================
+   CAMERA OFF
+   ========================================================= */
+
+.fullscreen-call .call-control-btn.camera-off {
+  background: #dc3545;
+}
+
+
+/* =========================================================
+   END CALL
+   ========================================================= */
+
+.fullscreen-call .end-call-btn {
+  width: 64px;
+  height: 64px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #dc3545;
+
+  color: #fff;
+
+  cursor: pointer;
+
+  font-size: 22px;
+
+  box-shadow:
+    0 5px 20px rgba(220, 53, 69, 0.45);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.fullscreen-call .end-call-btn:hover {
+  background: #bb2d3b;
+
+  transform: scale(1.06);
+}
+
+.fullscreen-call .end-call-btn:active {
+  transform: scale(0.95);
+}
+
+
+/* =========================================================
+   VOICE CALL
+   ========================================================= */
+
+.fullscreen-call.voice-call {
+  background: #111827;
+}
+
+
+/*
+ * For voice calls there is no remote video.
+ * Keep a clean dark background.
+ */
+
+.fullscreen-call.voice-call .remote-video,
+.fullscreen-call.voice-call .local-video {
+  display: none;
+}
+
+
+/* =========================================================
+   VOICE CALL AVATAR / CONTENT
+   ========================================================= */
+
+.fullscreen-call .voice-call-content {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 5;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  color: #fff;
+
+  text-align: center;
+}
+
+.fullscreen-call .voice-call-avatar {
+  width: 120px;
+  height: 120px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 20px;
+
+  border-radius: 50%;
+
+  background: #374151;
+
+  color: #fff;
+
+  font-size: 42px;
+  font-weight: 600;
+}
+
+
+/* =========================================================
+   MOBILE VIDEO CALL
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  .fullscreen-call .local-video {
+    top: 16px;
+    right: 16px;
+
+    width: 110px;
+    height: 155px;
+
+    border-radius: 10px;
+  }
+
+
+  .fullscreen-call .active-call-info {
+    top: 16px;
+    left: 16px;
+
+    padding: 7px 10px;
+  }
+
+
+  .fullscreen-call .call-controls {
+    gap: 12px;
+
+    padding:
+      20px
+      16px
+      calc(20px + env(safe-area-inset-bottom));
+  }
+
+
+  .fullscreen-call .call-control-btn {
+    width: 52px;
+    height: 52px;
+
+    font-size: 18px;
+  }
+
+
+  .fullscreen-call .end-call-btn {
+    width: 58px;
+    height: 58px;
+
+    font-size: 20px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+  .fullscreen-call .local-video {
+    width: 90px;
+    height: 125px;
+  }
+
+
+  .fullscreen-call .call-controls {
+    gap: 9px;
+  }
+
+
+  .fullscreen-call .call-control-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+
+  .fullscreen-call .end-call-btn {
+    width: 54px;
+    height: 54px;
+  }
+}
+
 
 
 /* =========================================================
@@ -1046,118 +1502,27 @@ app-chat {
 
 @media (max-width: 768px) {
 
-  .chat-container {
-    flex-direction: column;
-
-    height: 100vh;
-    height: 100dvh;
-
-    overflow: hidden;
-  }
-
-  /* -------------------------
-     MOBILE SIDEBAR
-     ------------------------- */
-
-  .chat-sidebar {
-    flex: 0 0 180px;
-
-    width: 100%;
-    height: 180px;
-
-    min-height: 180px;
-
-    border-right: none;
-    border-bottom: 1px solid #ddd;
-  }
-
-  .sidebar-header {
-    flex: 0 0 55px;
-
-    height: 55px;
-    min-height: 55px;
-  }
-
-  /*
-   * Conversation list gets the
-   * remaining sidebar height.
-   */
-  .conversation-list {
-    flex: 1 1 0;
-
-    min-height: 0;
-
-    overflow-y: auto;
-  }
-
-
-  /* -------------------------
-     MOBILE CHAT WINDOW
-     ------------------------- */
-
-  .chat-window {
-    flex: 1 1 0;
-
-    width: 100%;
-    height: auto;
-
-    min-height: 0;
-
-    overflow: hidden;
-  }
-
-  .chat-header {
-    flex: 0 0 55px;
-
-    height: 55px;
-    min-height: 55px;
-
-    padding: 0 0.75rem;
-  }
-
-  /*
-   * Message stream gets all
-   * remaining vertical space.
-   */
+  .conversation-list,
   .message-stream {
-    flex: 1 1 0;
-
-    min-height: 0;
-
     overflow-y: auto;
+    overflow-x: hidden;
 
-    padding: 0.75rem;
+    -webkit-overflow-scrolling: touch;
+
+    /* Allow normal vertical touch scrolling */
+    touch-action: pan-y;
+
+    /* Don't trap the swipe when reaching the edge */
+    overscroll-behavior-y: auto;
   }
 
-  .message-bubble {
-    max-width: 80%;
-  }
-
-  .chat-input-area {
-    flex: 0 0 auto;
-
-    padding: 0.5rem;
-  }
-
-  .video-call-area {
-    flex: 0 0 auto;
-
-    min-height: 180px;
-    max-height: 230px;
-  }
-
-  .remote-video {
-    height: 190px;
-  }
-
-  .local-video {
-    width: 110px;
-    height: 75px;
-
-    right: 10px;
-    bottom: 10px;
+  .chat-container,
+  .chat-sidebar,
+  .chat-window {
+    touch-action: pan-y;
   }
 }
+
 
 
 /* =========================================================

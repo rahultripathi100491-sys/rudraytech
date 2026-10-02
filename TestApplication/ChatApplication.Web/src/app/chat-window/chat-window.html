@@ -231,42 +231,68 @@
 
           <!-- VOICE CALL -->
 
-          <button
-            type="button"
-            class="voice-call-button"
-            (click)="startVoiceCall()"
-            [disabled]="
-              isStartingCall ||
-              !isActiveUserOnline()
-            ">
+          <div class="call-actions">
 
-            {{
-              isStartingCall
-                ? 'Calling...'
-                : '📞 Voice Call'
-            }}
+  <!-- Voice Call -->
+  <button
+    type="button"
+    class="call-icon-button voice-call-button"
+    (click)="startVoiceCall()"
+    [disabled]="isStartingCall || !activeTargetUserId"
+    aria-label="Voice call"
+    title="Voice call">
 
-          </button>
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true">
+
+      <path
+        d="M6.62 10.79
+           a15.05 15.05 0 0 0 6.59 6.59
+           l2.2-2.2
+           a1 1 0 0 1 1.02-.24
+           11.36 11.36 0 0 0 3.57.57
+           1 1 0 0 1 1 1v3.49
+           a1 1 0 0 1-1 1
+           C10.61 21 3 13.39 3 4
+           a1 1 0 0 1 1-1h3.5
+           a1 1 0 0 1 1 1
+           11.36 11.36 0 0 0 .57 3.57
+           1 1 0 0 1-.25 1.02z" />
+    </svg>
+
+  </button>
 
 
-          <!-- VIDEO CALL -->
+  <!-- Video Call -->
+  <button
+    type="button"
+    class="call-icon-button video-call-button"
+    (click)="startCall()"
+    [disabled]="isStartingCall || !activeTargetUserId"
+    aria-label="Video call"
+    title="Video call">
 
-          <button
-            type="button"
-            class="video-call-button"
-            (click)="startCall()"
-            [disabled]="
-              isStartingCall ||
-              !isActiveUserOnline()
-            ">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true">
 
-            {{
-              isStartingCall
-                ? 'Calling...'
-                : '📹 Video Call'
-            }}
+      <path
+        d="M15 10l4.55-2.28
+           A1 1 0 0 1 21 8.62v6.76
+           a1 1 0 0 1-1.45.9
+           L15 14v1
+           a2 2 0 0 1-2 2H5
+           a2 2 0 0 1-2-2V9
+           a2 2 0 0 1 2-2h8
+           a2 2 0 0 1 2 2z" />
+    </svg>
 
-          </button>
+  </button>
+
+</div>
+
+
 
         </div>
 
