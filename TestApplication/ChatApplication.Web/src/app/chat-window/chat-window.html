@@ -1,616 +1,141 @@
-<div class="chat-container">
+<div class="chat-container"> <!-- ===================================================== SIDEBAR ===================================================== --> <aside class="chat-sidebar">
+<div class="sidebar-header">
 
-  <!-- =====================================================
-       SIDEBAR
-       ===================================================== -->
+  <h2>Conversations</h2>
 
-  <aside class="chat-sidebar">
-
-    <div class="sidebar-header">
-
-      <h2>Conversations</h2>
-
-      <button
-        type="button"
-        class="new-chat-btn"
-        (click)="openNewChatModal()">
-
-        + New Chat
-
-      </button>
-
-    </div>
-
-
-    <!-- ===================================================
-         NEW CHAT SEARCH
-         =================================================== -->
-
-    <div
-      *ngIf="showNewChatModal"
-      class="search-box">
-
-      <input
-        type="text"
-        [(ngModel)]="searchQuery"
-        (input)="onSearchUsers()"
-        placeholder="Search user by name or email..."
-        autocomplete="off"
-      />
-
-      <div class="search-results-list">
-
-        <div
-          *ngFor="let user of searchResults"
-          class="search-user-item"
-          (click)="selectUserAndStartChat(user)">
-
-          <span class="user-name">
-            {{ user.name }}
-          </span>
-
-          <span class="user-email">
-            {{ user.email }}
-          </span>
-
-        </div>
-
-        <p
-          *ngIf="
-            searchQuery.trim().length > 0 &&
-            searchResults.length === 0
-          "
-          class="no-results">
-
-          No users found
-
-        </p>
-
-      </div>
-
-      <button
-        type="button"
-        class="close-btn"
-        (click)="closeNewChatModal()">
-
-        Cancel
-
-      </button>
-
-    </div>
-
-
-    <!-- ===================================================
-         CONVERSATIONS
-         =================================================== -->
-
-    <div class="conversation-list">
-
-      <div
-        *ngFor="
-          let conv of (conversations$ | async)
-        "
-        class="conversation-item"
-        [class.active]="
-          conv.participantUserId === activeTargetUserId
-        "
-        (click)="
-          startConversation(
-            conv.participantUserId,
-            conv.participantName
-          )
-        ">
-
-        <div
-          class="avatar"
-          [style.background-color]="
-            getAvatarColor(conv.participantName)
-          ">
-
-          <span
-            class="avatar-status"
-            [class.online]="
-              isUserOnline(conv.participantUserId)
-            "
-            [class.offline]="
-              !isUserOnline(conv.participantUserId)
-            ">
-          </span>
-
-          {{
-            conv.participantName
-              ? conv.participantName.charAt(0).toUpperCase()
-              : '?'
-          }}
-
-        </div>
-
-        <div class="conversation-info">
-
-          <div class="conversation-top">
-
-            <span class="user-name">
-              {{ conv.participantName }}
-            </span>
-
-            <span
-              *ngIf="conv.unreadCount > 0"
-              class="unread-badge">
-
-              {{ conv.unreadCount }}
-
-            </span>
-
-          </div>
-
-          <!-- Last message + status -->
-
-          <div class="last-message-row">
-
-            <p class="last-message">
-
-              {{
-                conv.lastMessage ||
-                'Start conversation...'
-              }}
-
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div
-        *ngIf="
-          (conversations$ | async)?.length === 0
-        "
-        class="empty-state">
-
-        No active conversations found
-
-      </div>
-
-    </div>
-
-  </aside>
-
-
-  <!-- =====================================================
-       CHAT WINDOW
-       ===================================================== -->
-
-  <main class="chat-window">
-
-    <ng-container
-      *ngIf="activeTargetUserId; else noChat">
-
-      <!-- =================================================
-           CHAT HEADER
-           ================================================= -->
-
-      <header class="chat-header">
-
-        <div class="user-status">
-
-          <h3>
-
-            <span
-              class="status-dot"
-              [class.online]="isActiveUserOnline()"
-              [class.offline]="!isActiveUserOnline()">
-            </span>
-
-            {{ activeTargetName || 'Chat' }}
-
-          </h3>
-
-          <span
-            class="status-indicator"
-            [class.online]="isActiveUserOnline()"
-            [class.offline]="!isActiveUserOnline()">
-
-            {{
-              isActiveUserOnline()
-                ? 'Online'
-                : 'Offline'
-            }}
-
-          </span>
-
-        </div>
-
-
-        <!-- =================================================
-             CALL BUTTONS
-             ================================================= -->
-
-        <div class="call-actions">
-
-          <!-- VOICE CALL -->
-
-          <div class="call-actions">
-
-  <!-- Voice Call -->
   <button
     type="button"
-    class="call-icon-button voice-call-button"
-    (click)="startVoiceCall()"
-    [disabled]="isStartingCall || !activeTargetUserId"
-    aria-label="Voice call"
-    title="Voice call">
+    class="new-chat-btn"
+    (click)="openNewChatModal()">
 
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true">
-
-      <path
-        d="M6.62 10.79
-           a15.05 15.05 0 0 0 6.59 6.59
-           l2.2-2.2
-           a1 1 0 0 1 1.02-.24
-           11.36 11.36 0 0 0 3.57.57
-           1 1 0 0 1 1 1v3.49
-           a1 1 0 0 1-1 1
-           C10.61 21 3 13.39 3 4
-           a1 1 0 0 1 1-1h3.5
-           a1 1 0 0 1 1 1
-           11.36 11.36 0 0 0 .57 3.57
-           1 1 0 0 1-.25 1.02z" />
-    </svg>
-
-  </button>
-
-
-  <!-- Video Call -->
-  <button
-    type="button"
-    class="call-icon-button video-call-button"
-    (click)="startCall()"
-    [disabled]="isStartingCall || !activeTargetUserId"
-    aria-label="Video call"
-    title="Video call">
-
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true">
-
-      <path
-        d="M15 10l4.55-2.28
-           A1 1 0 0 1 21 8.62v6.76
-           a1 1 0 0 1-1.45.9
-           L15 14v1
-           a2 2 0 0 1-2 2H5
-           a2 2 0 0 1-2-2V9
-           a2 2 0 0 1 2-2h8
-           a2 2 0 0 1 2 2z" />
-    </svg>
+    + New Chat
 
   </button>
 
 </div>
 
+<!-- ===================================================
+     NEW CHAT SEARCH
+     =================================================== -->
 
+<div
+  *ngIf="showNewChatModal"
+  class="search-box">
 
-        </div>
+  <input
+    type="text"
+    [(ngModel)]="searchQuery"
+    (input)="onSearchUsers()"
+    placeholder="Search user by name or email..."
+    autocomplete="off"
+  />
 
-      </header>
+  <div class="search-results-list">
 
+    <div
+      *ngFor="let user of searchResults"
+      class="search-user-item"
+      (click)="selectUserAndStartChat(user)">
 
-      <!-- =================================================
-           MESSAGES
-           ================================================= -->
+      <span class="user-name">
+        {{ user.name }}
+      </span>
 
-      <div class="message-stream" #scrollContainer (scroll)="onMessageScroll($event)">
+      <span class="user-email">
+        {{ user.email }}
+      </span>
 
-        <div
-          *ngFor="
-            let msg of
-              (chatService.activeMessages$ | async)
-          "
-          class="message-bubble-wrapper"
+    </div>
 
-          [class.sent]="
-            msg.senderUserId &&
-            msg.senderUserId.toLowerCase() ===
-            currentUserId.toLowerCase()
-          "
+    <p
+      *ngIf="
+        searchQuery.trim().length > 0 &&
+        searchResults.length === 0
+      "
+      class="no-results">
 
-          [class.received]="
-            !msg.senderUserId ||
-            msg.senderUserId.toLowerCase() !==
-            currentUserId.toLowerCase()
-          ">
+      No users found
 
-          <div class="message-bubble">
+    </p>
 
-            <!-- ==========================================
-                 MESSAGE CONTENT
-                 ========================================== -->
+  </div>
 
-            <p class="message-content">
-              {{ msg.content }}
-            </p>
+  <button
+    type="button"
+    class="close-btn"
+    (click)="closeNewChatModal()">
 
+    Cancel
 
-            <!-- ==========================================
-                 MESSAGE FOOTER
-                 ========================================== -->
+  </button>
 
-            <div class="message-footer">
+</div>
 
-              <!-- MESSAGE TIME -->
+<!-- ===================================================
+     CONVERSATIONS
+     =================================================== -->
 
-              <span class="message-timestamp">
-
-                {{
-                  (msg.sentAt || msg.sentAtUtc)
-                    | date:'shortTime'
-                }}
-
-              </span>
-
-
-              <!-- ========================================
-                   MESSAGE STATUS
-
-                   Only display status for messages
-                   sent by current user.
-                   ======================================== -->
-                   
-              <span
-                *ngIf="
-                  msg.senderUserId &&
-                  msg.senderUserId.toLowerCase() ===
-                  currentUserId.toLowerCase()
-                "
-                class="message-status"
-
-                [class.status-sending]="
-                  msg.status === 'sending'
-                "
-
-                [class.status-sent]="
-                  msg.status === 'sent'
-                "
-
-                [class.status-delivered]="
-                  msg.status === 'delivered'
-                "
-
-                [class.status-read]="
-                  msg.status === 'read'
-                "
-
-                [attr.title]="
-                  msg.status === 'sending'
-                    ? 'Sending'
-                    : msg.status === 'sent'
-                    ? 'Sent'
-                    : msg.status === 'delivered'
-                    ? 'Delivered'
-                    : msg.status === 'read'
-                    ? 'Read'
-                    : ''
-                ">
-
-                <!-- SENDING -->
-
-                <ng-container
-                  *ngIf="msg.status === 'sending'">
-
-                  ⏳
-
-                </ng-container>
-
-
-                <!-- SENT -->
-
-                <ng-container
-                  *ngIf="
-                    msg.status === 'sent' ||
-                    !msg.status
-                  ">
-
-                  ✓
-
-                </ng-container>
-
-
-                <!-- DELIVERED -->
-
-                <ng-container
-                  *ngIf="msg.status === 'delivered'">
-
-                  ✓✓
-
-                </ng-container>
-
-
-                <!-- READ -->
-
-                <ng-container
-                  *ngIf="msg.status === 'read'">
-
-                  ✓✓
-
-                </ng-container>
-
-              </span>
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- =================================================
-             NO MESSAGES
-             ================================================= -->
-
-        <div
-          *ngIf="
-            (chatService.activeMessages$ | async)?.length === 0
-          "
-          class="no-messages">
-
-          <p>
-            This is the start of your conversation.
-            Send a message!
-          </p>
-
-        </div>
-
-      </div>
-
-
-      <!-- =================================================
-           MESSAGE INPUT
-           ================================================= -->
-
-      <footer class="chat-input-area">
-
-        <form
-          class="input-form"
-          (ngSubmit)="onSendMessage()">
-
-          <input
-            type="text"
-            [(ngModel)]="newMessageText"
-            name="newMessageText"
-            placeholder="Type your message..."
-            autocomplete="off"
-            [disabled]="isSending"
-          />
-
-          <button
-            type="submit"
-            class="send-btn"
-            [disabled]="
-              !newMessageText.trim() ||
-              isSending
-            ">
-
-            {{
-              isSending
-                ? 'Sending...'
-                : 'Send'
-            }}
-
-          </button>
-
-        </form>
-
-      </footer>
-
-    </ng-container>
-
-
-    <!-- ===================================================
-         NO ACTIVE CHAT
-         =================================================== -->
-
-    <ng-template #noChat>
-
-      <div class="no-active-chat">
-
-        <div class="placeholder-content">
-
-          <div class="icon">
-            💬
-          </div>
-
-          <h3>
-            Start a Conversation
-          </h3>
-
-          <p>
-            Select a user or conversation
-            to begin real-time messaging.
-          </p>
-
-        </div>
-
-      </div>
-
-    </ng-template>
-
-  </main>
-
-
-  <!-- =====================================================
-       INCOMING CALL
-       ===================================================== -->
+<div class="conversation-list">
 
   <div
-    *ngIf="
-      incomingCallUserId &&
-      !(isCallActive$ | async)
-    "
-    class="incoming-call-overlay">
+    *ngFor="let conv of (conversations$ | async)"
+    class="conversation-item"
+    [class.active]="conv.participantUserId === activeTargetUserId"
+    (click)="
+      startConversation(
+        conv.participantUserId,
+        conv.participantName
+      )
+    ">
 
-    <div class="incoming-call-card">
+    <div
+      class="avatar"
+      [style.background-color]="
+        getAvatarColor(conv.participantName)
+      ">
 
-      <div class="incoming-avatar">
+      <span
+        class="avatar-status"
+        [class.online]="isUserOnline(conv.participantUserId)"
+        [class.offline]="!isUserOnline(conv.participantUserId)">
+      </span>
 
-        {{
-          incomingCallName
-            ? incomingCallName.charAt(0).toUpperCase()
-            : '?'
-        }}
+      {{
+        conv.participantName
+          ? conv.participantName.charAt(0).toUpperCase()
+          : '?'
+      }}
+
+    </div>
+
+    <div class="conversation-info">
+
+      <div class="conversation-top">
+
+        <span class="user-name">
+          {{ conv.participantName }}
+        </span>
+
+        <span
+          *ngIf="conv.unreadCount > 0"
+          class="unread-badge">
+
+          {{ conv.unreadCount }}
+
+        </span>
 
       </div>
 
+      <div class="last-message-row">
 
-      <h2>
-
-        {{
-          incomingCallType === 'voice'
-            ? 'Incoming Voice Call'
-            : 'Incoming Video Call'
-        }}
-
-      </h2>
-
-
-      <p>
-
-        <strong>
-          {{ incomingCallName || 'Unknown user' }}
-        </strong>
-
-        is calling you...
-
-      </p>
-
-
-      <div class="incoming-call-actions">
-
-        <button
-          type="button"
-          class="accept-call-button"
-          (click)="acceptIncomingCall()">
+        <p class="last-message">
 
           {{
-            incomingCallType === 'voice'
-              ? '📞 Accept'
-              : '🎥 Accept'
+            conv.lastMessage ||
+            'Start conversation...'
           }}
 
-        </button>
-
-
-        <button
-          type="button"
-          class="reject-call-button"
-          (click)="rejectIncomingCall()">
-
-          ❌ Decline
-
-        </button>
+        </p>
 
       </div>
 
@@ -618,232 +143,855 @@
 
   </div>
 
+  <div
+    *ngIf="(conversations$ | async)?.length === 0"
+    class="empty-state">
 
-  <!-- =====================================================
-       ACTIVE VOICE CALL
-       ===================================================== -->
+    No active conversations found
 
-  <section
-    *ngIf="
-      (isCallActive$ | async) &&
-      callType === 'voice'
-    "
-    class="fullscreen-call voice-call-screen">
+  </div>
 
-    <audio
-      #remoteAudio
-      autoplay
-      playsinline>
-    </audio>
+</div>
 
+</aside> <!-- ===================================================== CHAT WINDOW ===================================================== --> <main class="chat-window">
+<ng-container *ngIf="activeTargetUserId; else noChat">
 
-    <div class="voice-call-content">
+  <!-- =================================================
+       CHAT HEADER
+       ================================================= -->
 
-      <div
-        class="voice-call-avatar"
-        [style.background-color]="
-          getAvatarColor(activeTargetName)
+  <header class="chat-header">
+
+    <div class="user-status">
+
+      <h3>
+
+        <span
+          class="status-dot"
+          [class.online]="isActiveUserOnline()"
+          [class.offline]="!isActiveUserOnline()">
+        </span>
+
+        {{ activeTargetName || 'Chat' }}
+
+      </h3>
+
+      <span
+        class="status-indicator"
+        [class.online]="isActiveUserOnline()"
+        [class.offline]="!isActiveUserOnline()">
+
+        {{
+          isActiveUserOnline()
+            ? 'Online'
+            : 'Offline'
+        }}
+
+      </span>
+
+    </div>
+
+    <!-- =================================================
+         CALL BUTTONS
+         ================================================= -->
+
+    <div class="call-actions">
+
+      <!-- Voice Call -->
+
+      <button
+        type="button"
+        class="call-icon-button voice-call-button"
+        (click)="startVoiceCall()"
+        [disabled]="isStartingCall || !activeTargetUserId"
+        aria-label="Voice call"
+        title="Voice call">
+
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true">
+
+          <path
+            d="M6.62 10.79
+               a15.05 15.05 0 0 0 6.59 6.59
+               l2.2-2.2
+               a1 1 0 0 1 1.02-.24
+               11.36 11.36 0 0 0 3.57.57
+               1 1 0 0 1 1 1v3.49
+               a1 1 0 0 1-1 1
+               C10.61 21 3 13.39 3 4
+               a1 1 0 0 1 1-1h3.5
+               a1 1 0 0 1 1 1
+               11.36 11.36 0 0 0 .57 3.57
+               1 1 0 0 1-.25 1.02z" />
+
+        </svg>
+
+      </button>
+
+      <!-- Video Call -->
+
+      <button
+        type="button"
+        class="call-icon-button video-call-button"
+        (click)="startCall()"
+        [disabled]="isStartingCall || !activeTargetUserId"
+        aria-label="Video call"
+        title="Video call">
+
+        <svg
+          viewBox="0 0 24 24"
+          aria-hidden="true">
+
+          <path
+            d="M15 10l4.55-2.28
+               A1 1 0 0 1 21 8.62v6.76
+               a1 1 0 0 1-1.45.9
+               L15 14v1
+               a2 2 0 0 1-2 2H5
+               a2 2 0 0 1-2-2V9
+               a2 2 0 0 1 2-2h8
+               a2 2 0 0 1 2 2z" />
+
+        </svg>
+
+      </button>
+
+    </div>
+
+  </header>
+
+  <!-- =================================================
+       MESSAGES
+       ================================================= -->
+
+  <div
+    class="message-stream"
+    #scrollContainer
+    (scroll)="onMessageScroll($event)">
+
+    <div
+      *ngFor="let msg of (chatService.activeMessages$ | async)"
+      class="message-bubble-wrapper"
+
+      [class.sent]="
+        msg.senderUserId &&
+        msg.senderUserId.toLowerCase() ===
+        currentUserId.toLowerCase()
+      "
+
+      [class.received]="
+        !msg.senderUserId ||
+        msg.senderUserId.toLowerCase() !==
+        currentUserId.toLowerCase()
+      ">
+
+      <div class="message-bubble">
+
+        <p class="message-content">
+          {{ msg.content }}
+        </p>
+
+        <div class="message-footer">
+
+          <span class="message-timestamp">
+
+            {{
+              (msg.sentAt || msg.sentAtUtc)
+                | date:'shortTime'
+            }}
+
+          </span>
+
+          <span
+            *ngIf="
+              msg.senderUserId &&
+              msg.senderUserId.toLowerCase() ===
+              currentUserId.toLowerCase()
+            "
+            class="message-status"
+
+            [class.status-sending]="
+              msg.status === 'sending'
+            "
+
+            [class.status-sent]="
+              msg.status === 'sent'
+            "
+
+            [class.status-delivered]="
+              msg.status === 'delivered'
+            "
+
+            [class.status-read]="
+              msg.status === 'read'
+            "
+
+            [attr.title]="
+              msg.status === 'sending'
+                ? 'Sending'
+                : msg.status === 'sent'
+                ? 'Sent'
+                : msg.status === 'delivered'
+                ? 'Delivered'
+                : msg.status === 'read'
+                ? 'Read'
+                : ''
+            ">
+
+            <ng-container
+              *ngIf="msg.status === 'sending'">
+
+              ⏳
+
+            </ng-container>
+
+            <ng-container
+              *ngIf="
+                msg.status === 'sent' ||
+                !msg.status
+              ">
+
+              ✓
+
+            </ng-container>
+
+            <ng-container
+              *ngIf="msg.status === 'delivered'">
+
+              ✓✓
+
+            </ng-container>
+
+            <ng-container
+              *ngIf="msg.status === 'read'">
+
+              ✓✓
+
+            </ng-container>
+
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- NO MESSAGES -->
+
+    <div
+      *ngIf="
+        (chatService.activeMessages$ | async)?.length === 0
+      "
+      class="no-messages">
+
+      <p>
+        This is the start of your conversation.
+        Send a message!
+      </p>
+
+    </div>
+
+  </div>
+
+  <!-- =================================================
+       MESSAGE INPUT
+       ================================================= -->
+
+  <footer class="chat-input-area">
+
+    <form
+      class="input-form"
+      (ngSubmit)="onSendMessage()">
+
+      <input
+        type="text"
+        [(ngModel)]="newMessageText"
+        name="newMessageText"
+        placeholder="Type your message..."
+        autocomplete="off"
+        [disabled]="isSending"
+      />
+
+      <button
+        type="submit"
+        class="send-btn"
+        [disabled]="
+          !newMessageText.trim() ||
+          isSending
         ">
 
         {{
-          activeTargetName
-            ? activeTargetName.charAt(0).toUpperCase()
-            : '?'
-        }}
-
-      </div>
-
-
-      <h2>
-
-        {{ activeTargetName || 'Voice Call' }}
-
-      </h2>
-
-
-      <p class="call-status">
-
-        {{ callStatus || 'Connected' }}
-
-      </p>
-
-    </div>
-
-
-    <div class="call-controls">
-
-      <button
-        type="button"
-        class="call-control-button"
-        [class.active-control]="isMicrophoneMuted"
-        (click)="toggleMicrophone()">
-
-        {{
-          isMicrophoneMuted
-            ? '🔇'
-            : '🎤'
+          isSending
+            ? 'Sending...'
+            : 'Send'
         }}
 
       </button>
 
+    </form>
 
-      <button
-        type="button"
-        class="end-call-button"
-        (click)="endCall()">
+  </footer>
 
-        📞
+</ng-container>
 
-        <span>
-          End Call
-        </span>
+<!-- ===================================================
+     NO ACTIVE CHAT
+     =================================================== -->
 
-      </button>
+<ng-template #noChat>
 
-    </div>
+  <div class="no-active-chat">
 
-  </section>
+    <div class="placeholder-content">
 
-
-  <!-- =====================================================
-       ACTIVE VIDEO CALL
-       ===================================================== -->
-
-  <section
-    *ngIf="
-      (isCallActive$ | async) &&
-      callType === 'video'
-    "
-    class="fullscreen-call">
-
-    <video
-      #remoteVideo
-      class="remote-video"
-      autoplay
-      playsinline>
-    </video>
-
-
-    <div
-      *ngIf="!remoteStream"
-      class="remote-video-placeholder">
-
-      <div class="remote-placeholder-avatar">
-
-        {{
-          activeTargetName
-            ? activeTargetName.charAt(0).toUpperCase()
-            : '?'
-        }}
-
+      <div class="icon">
+        💬
       </div>
 
-      <h2>
-
-        {{ activeTargetName || 'Video Call' }}
-
-      </h2>
+      <h3>
+        Start a Conversation
+      </h3>
 
       <p>
-
-        {{ callStatus || 'Connecting...' }}
-
+        Select a user or conversation
+        to begin real-time messaging.
       </p>
 
     </div>
 
+  </div>
 
-    <div class="remote-user-info">
+</ng-template>
 
-      <div class="remote-user-avatar">
+</main> <!-- ===================================================== INCOMING CALL ===================================================== --> <div *ngIf=" incomingCallUserId && !(isCallActive$ | async) " class="incoming-call-overlay">
+<div class="incoming-call-card">
 
-        {{
-          activeTargetName
-            ? activeTargetName.charAt(0).toUpperCase()
-            : '?'
-        }}
+  <div class="incoming-avatar">
 
-      </div>
+    {{
+      incomingCallName
+        ? incomingCallName.charAt(0).toUpperCase()
+        : '?'
+    }}
 
-      <div>
+  </div>
 
-        <strong>
-          {{ activeTargetName || 'Video Call' }}
-        </strong>
+  <h2>
 
-        <span>
-          {{ callStatus || 'Connected' }}
-        </span>
+    {{
+      incomingCallType === 'voice'
+        ? 'Incoming Voice Call'
+        : 'Incoming Video Call'
+    }}
 
-      </div>
+  </h2>
 
-    </div>
+  <p>
 
+    <strong>
+      {{ incomingCallName || 'Unknown user' }}
+    </strong>
 
-    <div class="local-video-wrapper">
+    is calling you...
 
-      <video
-        #localVideo
-        class="local-video"
-        autoplay
-        playsinline
-        muted>
-      </video>
+  </p>
 
-      <div class="local-video-label">
-        You
-      </div>
+  <div class="incoming-call-actions">
 
-    </div>
+    <button
+      type="button"
+      class="accept-call-button"
+      (click)="acceptIncomingCall()">
 
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true">
 
-    <div class="call-controls">
+        <path
+          d="M6.62 10.79
+             a15.05 15.05 0 0 0 6.59 6.59
+             l2.2-2.2
+             a1 1 0 0 1 1.02-.24
+             11.36 11.36 0 0 0 3.57.57
+             1 1 0 0 1 1 1v3.49
+             a1 1 0 0 1-1 1
+             C10.61 21 3 13.39 3 4
+             a1 1 0 0 1 1-1h3.5
+             a1 1 0 0 1 1 1
+             11.36 11.36 0 0 0 .57 3.57
+             1 1 0 0 1-.25 1.02z" />
 
-      <button
-        type="button"
-        class="call-control-button"
-        [class.active-control]="isMicrophoneMuted"
-        (click)="toggleMicrophone()">
+      </svg>
 
-        {{
-          isMicrophoneMuted
-            ? '🔇'
-            : '🎤'
-        }}
+      <span>Accept</span>
 
-      </button>
+    </button>
 
+    <button
+      type="button"
+      class="reject-call-button"
+      (click)="rejectIncomingCall()">
 
-      <button
-        type="button"
-        class="call-control-button"
-        [class.active-control]="isCameraOff"
-        (click)="toggleCamera()">
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true">
 
-        {{
-          isCameraOff
-            ? '🚫'
-            : '🎥'
-        }}
+        <path
+          d="M6.4 5.2
+             L18.8 17.6
+             M18.8 5.2
+             L6.4 17.6" />
 
-      </button>
+      </svg>
 
+      <span>Decline</span>
 
-      <button
-        type="button"
-        class="end-call-button"
-        (click)="endCall()">
+    </button>
 
-        📞
-
-        <span>
-          End Call
-        </span>
-
-      </button>
-
-    </div>
-
-  </section>
+  </div>
 
 </div>
+
+</div> <!-- ===================================================== ACTIVE VOICE CALL ===================================================== --> <section *ngIf=" (isCallActive$ | async) && callType === 'voice' " class="fullscreen-call voice-call-screen">
+<audio
+  #remoteAudio
+  autoplay
+  playsinline>
+</audio>
+
+<div class="voice-call-content">
+
+  <div
+    class="voice-call-avatar"
+    [style.background-color]="
+      getAvatarColor(activeTargetName)
+    ">
+
+    {{
+      activeTargetName
+        ? activeTargetName.charAt(0).toUpperCase()
+        : '?'
+    }}
+
+  </div>
+
+  <h2>
+    {{ activeTargetName || 'Voice Call' }}
+  </h2>
+
+  <p class="call-status">
+    {{ callStatus || 'Connected' }}
+  </p>
+
+</div>
+
+<!-- =================================================
+     MODERN VOICE CALL CONTROLS
+     ================================================= -->
+
+<div class="call-controls modern-call-controls">
+
+  <!-- MUTE / UNMUTE -->
+
+  <button
+    type="button"
+    class="call-control-button mute-control"
+    [class.active-control]="isMicrophoneMuted"
+    [attr.aria-label]="
+      isMicrophoneMuted
+        ? 'Unmute microphone'
+        : 'Mute microphone'
+    "
+    [attr.title]="
+      isMicrophoneMuted
+        ? 'Unmute microphone'
+        : 'Mute microphone'
+    "
+    (click)="toggleMicrophone()">
+
+    <span
+      class="control-icon"
+      aria-hidden="true">
+
+      <svg
+        *ngIf="!isMicrophoneMuted"
+        viewBox="0 0 24 24">
+
+        <path
+          d="M12 14
+             a3 3 0 0 0 3-3V6
+             a3 3 0 0 0-6 0v5
+             a3 3 0 0 0 3 3z" />
+
+        <path
+          d="M19 11
+             a7 7 0 0 1-14 0
+             M12 18v4
+             M8 22h8" />
+
+      </svg>
+
+      <svg
+        *ngIf="isMicrophoneMuted"
+        viewBox="0 0 24 24">
+
+        <path
+          d="M9 9v2
+             a3 3 0 0 0 5.12 2.12
+             M15 9V6
+             a3 3 0 0 0-5.12-2.12" />
+
+        <path
+          d="M5 5l14 14
+             M19 11
+             a7 7 0 0 1-1.46 4.28
+             M5 11
+             a7 7 0 0 0 7 7
+             M12 18v4
+             M8 22h8" />
+
+      </svg>
+
+    </span>
+
+    <span class="control-label">
+
+      {{
+        isMicrophoneMuted
+          ? 'Unmute'
+          : 'Mute'
+      }}
+
+    </span>
+
+  </button>
+
+  <!-- DISCONNECT -->
+
+  <button
+    type="button"
+    class="disconnect-button"
+    aria-label="Disconnect call"
+    title="Disconnect"
+    (click)="endCall()">
+
+    <span
+      class="control-icon"
+      aria-hidden="true">
+
+      <svg
+        viewBox="0 0 24 24">
+
+        <path
+          d="M6.62 10.79
+             a15.05 15.05 0 0 0 6.59 6.59
+             l2.2-2.2
+             a1 1 0 0 1 1.02-.24
+             11.36 11.36 0 0 0 3.57.57
+             1 1 0 0 1 1 1v3.49
+             a1 1 0 0 1-1 1
+             C10.61 21 3 13.39 3 4
+             a1 1 0 0 1 1-1h3.5
+             a1 1 0 0 1 1 1
+             11.36 11.36 0 0 0 .57 3.57
+             1 1 0 0 1-.25 1.02z" />
+
+      </svg>
+
+    </span>
+
+    <span class="control-label">
+      Disconnect
+    </span>
+
+  </button>
+
+</div>
+
+</section> <!-- ===================================================== ACTIVE VIDEO CALL ===================================================== --> <section *ngIf=" (isCallActive$ | async) && callType === 'video' " class="fullscreen-call video-call-screen">
+<!-- REMOTE VIDEO -->
+
+<video
+  #remoteVideo
+  class="remote-video"
+  autoplay
+  playsinline>
+</video>
+
+<!-- REMOTE VIDEO PLACEHOLDER -->
+
+<div
+  *ngIf="!remoteStream"
+  class="remote-video-placeholder">
+
+  <div class="remote-placeholder-avatar">
+
+    {{
+      activeTargetName
+        ? activeTargetName.charAt(0).toUpperCase()
+        : '?'
+    }}
+
+  </div>
+
+  <h2>
+    {{ activeTargetName || 'Video Call' }}
+  </h2>
+
+  <p>
+    {{ callStatus || 'Connecting...' }}
+  </p>
+
+</div>
+
+<!-- REMOTE USER INFO -->
+
+<div class="remote-user-info">
+
+  <div class="remote-user-avatar">
+
+    {{
+      activeTargetName
+        ? activeTargetName.charAt(0).toUpperCase()
+        : '?'
+    }}
+
+  </div>
+
+  <div>
+
+    <strong>
+      {{ activeTargetName || 'Video Call' }}
+    </strong>
+
+    <span>
+      {{ callStatus || 'Connected' }}
+    </span>
+
+  </div>
+
+</div>
+
+<!-- LOCAL VIDEO -->
+
+<div class="local-video-wrapper">
+
+  <video
+    #localVideo
+    class="local-video"
+    autoplay
+    playsinline
+    muted>
+  </video>
+
+  <div class="local-video-label">
+    You
+  </div>
+
+</div>
+
+<!-- =================================================
+     MODERN VIDEO CALL CONTROLS
+     ================================================= -->
+
+<div class="call-controls modern-call-controls">
+
+  <!-- MUTE / UNMUTE -->
+
+  <button
+    type="button"
+    class="call-control-button mute-control"
+    [class.active-control]="isMicrophoneMuted"
+    [attr.aria-label]="
+      isMicrophoneMuted
+        ? 'Unmute microphone'
+        : 'Mute microphone'
+    "
+    [attr.title]="
+      isMicrophoneMuted
+        ? 'Unmute microphone'
+        : 'Mute microphone'
+    "
+    (click)="toggleMicrophone()">
+
+    <span
+      class="control-icon"
+      aria-hidden="true">
+
+      <!-- MICROPHONE ON -->
+
+      <svg
+        *ngIf="!isMicrophoneMuted"
+        viewBox="0 0 24 24">
+
+        <path
+          d="M12 14
+             a3 3 0 0 0 3-3V6
+             a3 3 0 0 0-6 0v5
+             a3 3 0 0 0 3 3z" />
+
+        <path
+          d="M19 11
+             a7 7 0 0 1-14 0
+             M12 18v4
+             M8 22h8" />
+
+      </svg>
+
+      <!-- MICROPHONE MUTED -->
+
+      <svg
+        *ngIf="isMicrophoneMuted"
+        viewBox="0 0 24 24">
+
+        <path
+          d="M9 9v2
+             a3 3 0 0 0 5.12 2.12
+             M15 9V6
+             a3 3 0 0 0-5.12-2.12" />
+
+        <path
+          d="M5 5l14 14
+             M19 11
+             a7 7 0 0 1-1.46 4.28
+             M5 11
+             a7 7 0 0 0 7 7
+             M12 18v4
+             M8 22h8" />
+
+      </svg>
+
+    </span>
+
+    <span class="control-label">
+
+      {{
+        isMicrophoneMuted
+          ? 'Unmute'
+          : 'Mute'
+      }}
+
+    </span>
+
+  </button>
+
+  <!-- CAMERA ON / OFF -->
+
+  <button
+    type="button"
+    class="call-control-button camera-control"
+    [class.active-control]="isCameraOff"
+    [attr.aria-label]="
+      isCameraOff
+        ? 'Turn camera on'
+        : 'Turn camera off'
+    "
+    [attr.title]="
+      isCameraOff
+        ? 'Turn camera on'
+        : 'Turn camera off'
+    "
+    (click)="toggleCamera()">
+
+    <span
+      class="control-icon"
+      aria-hidden="true">
+
+      <!-- CAMERA ON -->
+
+      <svg
+        *ngIf="!isCameraOff"
+        viewBox="0 0 24 24">
+
+        <rect
+          x="3"
+          y="7"
+          width="13"
+          height="10"
+          rx="2" />
+
+        <path
+          d="M16 10
+             l5-3v10l-5-3z" />
+
+      </svg>
+
+      <!-- CAMERA OFF -->
+
+      <svg
+        *ngIf="isCameraOff"
+        viewBox="0 0 24 24">
+
+        <path
+          d="M3 7
+             h13
+             a2 2 0 0 1 2 2v6
+             a2 2 0 0 1-2 2H5
+             a2 2 0 0 1-2-2z" />
+
+        <path
+          d="M18 10
+             l3-2v8l-3-2
+             M4 4l16 16" />
+
+      </svg>
+
+    </span>
+
+    <span class="control-label">
+
+      {{
+        isCameraOff
+          ? 'Camera On'
+          : 'Camera Off'
+      }}
+
+    </span>
+
+  </button>
+
+  <!-- DISCONNECT -->
+
+  <button
+    type="button"
+    class="disconnect-button"
+    aria-label="Disconnect call"
+    title="Disconnect"
+    (click)="endCall()">
+
+    <span
+      class="control-icon"
+      aria-hidden="true">
+
+      <svg
+        viewBox="0 0 24 24">
+
+        <path
+          d="M6.62 10.79
+             a15.05 15.05 0 0 0 6.59 6.59
+             l2.2-2.2
+             a1 1 0 0 1 1.02-.24
+             11.36 11.36 0 0 1 3.57.57
+             1 1 0 0 1 1 1v3.49
+             a1 1 0 0 1-1 1
+             C10.61 21 3 13.39 3 4
+             a1 1 0 0 1 1-1h3.5
+             a1 1 0 0 1 1 1
+             11.36 11.36 0 0 0 .57 3.57
+             1 1 0 0 1-.25 1.02z" />
+
+      </svg>
+
+    </span>
+
+    <span class="control-label">
+      Disconnect
+    </span>
+
+  </button>
+
+</div>
+
+</section> </div>
