@@ -224,8 +224,6 @@ export class ChatWindowComponent
 
   private bottomScrollScheduled = false;
 
-  private shouldScrollToBottom = false;
-
   private ignoreScrollUntil = 0;
 
 
@@ -269,6 +267,16 @@ export class ChatWindowComponent
   private restoringScrollPosition = false;
 
   private readonly scrollThreshold = 80;
+
+  /*
+   * Prevent requesting the same page twice.
+   */
+  private requestedPages = new Set<number>();
+
+  /*
+   * Page currently being requested.
+   */
+  private loadingPageNumber: number | null = null;
 
 
   // =========================================================
@@ -358,11 +366,26 @@ export class ChatWindowComponent
               return;
             }
 
-            if (this.shouldScrollToBottom) {
+            /*
+             * When a conversation is opened or a message is sent,
+             * scroll to bottom.
+             */
+            if (this.initialScrollPending) {
 
-              this.initialScrollPending = true;
+              this.scheduleInitialBottomScroll();
 
-              this.shouldScrollToBottom = false;
+            }
+
+            /*
+             * Do not scroll to bottom when older messages are
+             * being loaded.
+             */
+            if (
+              !this.restoringScrollPosition &&
+              this.isNearBottom()
+            ) {
+
+              this.scheduleScrollToBottom();
 
             }
 
@@ -370,17 +393,6 @@ export class ChatWindowComponent
 
               if (this.isDestroyed) {
                 return;
-              }
-
-              if (
-                this.initialScrollPending &&
-                !this.restoringScrollPosition
-              ) {
-
-                this.initialScrollPending = false;
-
-                this.forceScrollToBottom();
-
               }
 
               const statusMessages =
@@ -680,6 +692,10 @@ export class ChatWindowComponent
 
     this.attachMedia();
 
+    /*
+     * Initial conversation loading should always finish
+     * at the bottom.
+     */
     if (
       this.initialScrollPending &&
       !this.restoringScrollPosition &&
@@ -696,7 +712,7 @@ export class ChatWindowComponent
 
 
   // =========================================================
-  // SCROLL
+  // MESSAGE SCROLL
   // =========================================================
 
   public onMessageScroll(event: Event): void {
@@ -733,7 +749,8 @@ export class ChatWindowComponent
     }
 
     /*
-     * User has reached the top.
+     * Only load older messages when the user reaches
+     * the TOP of the chat.
      */
     if (
       element.scrollTop <=
@@ -775,16 +792,30 @@ export class ChatWindowComponent
       return;
     }
 
-    this.isLoadingOlderMessages = true;
-
-    this.restoringScrollPosition = true;
-
     const nextPage =
       this.messagePageNumber + 1;
 
     /*
-     * Save exact scroll position before
-     * loading older messages.
+     * Do not request same page twice.
+     */
+    if (
+      this.requestedPages.has(nextPage)
+    ) {
+
+      return;
+
+    }
+
+    this.isLoadingOlderMessages = true;
+
+    this.restoringScrollPosition = true;
+
+    this.loadingPageNumber = nextPage;
+
+    this.requestedPages.add(nextPage);
+
+    /*
+     * Save exact position before loading.
      */
     const oldScrollHeight =
       element.scrollHeight;
@@ -792,8 +823,20 @@ export class ChatWindowComponent
     const oldScrollTop =
       element.scrollTop;
 
+    const oldFirstVisibleMessage =
+      this.getFirstVisibleMessageKey(
+        element
+      );
+
     console.log(
-      `Loading message page ${nextPage}...`
+      'Loading older messages:',
+      {
+        conversation: targetUserId,
+        page: nextPage,
+        oldScrollHeight,
+        oldScrollTop,
+        oldFirstVisibleMessage
+      }
     );
 
     try {
@@ -810,12 +853,12 @@ export class ChatWindowComponent
       }
 
       /*
-       * -----------------------------------------------------
-       * PAGINATION FIX
-       * -----------------------------------------------------
+       * IMPORTANT:
        *
-       * Never automatically set hasMoreMessages=false
-       * simply because hasNextPage is undefined.
+       * Always advance the current page after the request.
+       *
+       * Previously page 2 could remain as the current page
+       * when the service returned void.
        */
       if (response) {
 
@@ -826,34 +869,19 @@ export class ChatWindowComponent
 
       } else {
 
-        /*
-         * The ChatService may update activeMessages$
-         * internally and return nothing.
-         *
-         * In that case we still advance the page.
-         */
         this.messagePageNumber =
           nextPage;
 
-        console.warn(
-          'No pagination metadata returned for page',
-          nextPage
-        );
+        /*
+         * If the service returns no pagination metadata,
+         * don't prematurely stop pagination.
+         */
+        this.hasMoreMessages = true;
 
       }
 
-      console.log(
-        'Pagination state:',
-        {
-          requestedPage: nextPage,
-          currentPage: this.messagePageNumber,
-          hasMore: this.hasMoreMessages,
-          response
-        }
-      );
-
       /*
-       * Wait for Angular + activeMessages$.
+       * Wait until activeMessages$ updates Angular view.
        */
       await this.waitForViewUpdate();
 
@@ -861,6 +889,12 @@ export class ChatWindowComponent
         return;
       }
 
+      /*
+       * Restore position.
+       *
+       * Method 1:
+       * scrollHeight difference.
+       */
       const newContainer =
         this.scrollContainer?.nativeElement;
 
@@ -875,15 +909,26 @@ export class ChatWindowComponent
         newScrollHeight -
         oldScrollHeight;
 
-      /*
-       * Preserve the message position that the
-       * user was looking at.
-       */
       newContainer.scrollTop =
-        oldScrollTop + heightDifference;
+        oldScrollTop +
+        heightDifference;
 
       /*
-       * Second correction after browser layout.
+       * Second correction using the actual first visible
+       * message.
+       */
+      await this.waitForViewUpdate();
+
+      if (this.isDestroyed) {
+        return;
+      }
+
+      this.restoreScrollByMessage(
+        oldFirstVisibleMessage
+      );
+
+      /*
+       * Final correction.
        */
       requestAnimationFrame(() => {
 
@@ -901,16 +946,31 @@ export class ChatWindowComponent
         const currentHeight =
           container.scrollHeight;
 
-        const additionalDifference =
-          currentHeight -
-          newScrollHeight;
-
+        /*
+         * Do not allow loading older messages to send
+         * the user to the bottom.
+         */
         if (
-          additionalDifference !== 0
+          currentHeight > 0 &&
+          oldScrollTop > 0
         ) {
 
-          container.scrollTop +=
-            additionalDifference;
+          /*
+           * Position should remain around the same content.
+           */
+          if (
+            container.scrollTop <
+            this.scrollThreshold
+          ) {
+
+            container.scrollTop =
+              Math.min(
+                oldScrollTop + heightDifference,
+                container.scrollHeight
+                  - container.clientHeight
+              );
+
+          }
 
         }
 
@@ -918,12 +978,21 @@ export class ChatWindowComponent
 
     } catch (error: unknown) {
 
+      /*
+       * Allow retry if the request failed.
+       */
+      this.requestedPages.delete(
+        nextPage
+      );
+
       console.error(
         `Failed to load message page ${nextPage}:`,
         error
       );
 
     } finally {
+
+      this.loadingPageNumber = null;
 
       setTimeout(() => {
 
@@ -952,18 +1021,19 @@ export class ChatWindowComponent
   ): void {
 
     /*
-     * Page number.
+     * Always update current page.
      */
     this.messagePageNumber =
-      response.pageNumber ||
-      requestedPage;
+      typeof response.pageNumber === 'number'
+        ? response.pageNumber
+        : requestedPage;
 
-    /*
-     * -------------------------------------------------------
-     * CASE 1
-     * Backend explicitly provides hasNextPage.
-     * -------------------------------------------------------
-     */
+
+    // -------------------------------------------------------
+    // CASE 1
+    // hasNextPage
+    // -------------------------------------------------------
+
     if (
       typeof response.hasNextPage ===
       'boolean'
@@ -976,12 +1046,12 @@ export class ChatWindowComponent
 
     }
 
-    /*
-     * -------------------------------------------------------
-     * CASE 2
-     * Backend provides totalPages.
-     * -------------------------------------------------------
-     */
+
+    // -------------------------------------------------------
+    // CASE 2
+    // totalPages
+    // -------------------------------------------------------
+
     if (
       typeof response.totalPages ===
       'number'
@@ -995,12 +1065,12 @@ export class ChatWindowComponent
 
     }
 
-    /*
-     * -------------------------------------------------------
-     * CASE 3
-     * Backend provides totalCount.
-     * -------------------------------------------------------
-     */
+
+    // -------------------------------------------------------
+    // CASE 3
+    // totalCount + pageSize
+    // -------------------------------------------------------
+
     if (
       typeof response.totalCount ===
         'number' &&
@@ -1023,16 +1093,20 @@ export class ChatWindowComponent
 
     }
 
-    /*
-     * -------------------------------------------------------
-     * CASE 4
-     * Infer from number of returned messages.
-     * -------------------------------------------------------
-     */
+
+    // -------------------------------------------------------
+    // CASE 4
+    // items length
+    // -------------------------------------------------------
+
     if (
       Array.isArray(response.items)
     ) {
 
+      /*
+       * If the API returned a complete page,
+       * there may be another page.
+       */
       this.hasMoreMessages =
         response.items.length >=
         this.messagePageSize;
@@ -1041,14 +1115,14 @@ export class ChatWindowComponent
 
     }
 
+
+    // -------------------------------------------------------
+    // CASE 5
+    // NO METADATA
+    // -------------------------------------------------------
+
     /*
-     * -------------------------------------------------------
-     * CASE 5
-     *
-     * No pagination metadata.
-     *
-     * Do not stop pagination automatically.
-     * -------------------------------------------------------
+     * Do NOT set false here.
      */
     this.hasMoreMessages = true;
 
@@ -1076,6 +1150,7 @@ export class ChatWindowComponent
 
       };
 
+
     if (
       typeof service.loadConversationHistory !==
       'function'
@@ -1086,6 +1161,7 @@ export class ChatWindowComponent
       );
 
     }
+
 
     const result =
       service.loadConversationHistory(
@@ -1127,6 +1203,7 @@ export class ChatWindowComponent
                 }
               ) => unknown;
             };
+
 
           observable.subscribe({
 
@@ -1208,7 +1285,7 @@ export class ChatWindowComponent
 
 
     // -------------------------------------------------------
-    // SYNCHRONOUS RESPONSE
+    // SYNCHRONOUS
     // -------------------------------------------------------
 
     if (
@@ -1221,10 +1298,10 @@ export class ChatWindowComponent
     }
 
 
-    /*
-     * Service may have updated activeMessages$
-     * internally and returned void.
-     */
+    // -------------------------------------------------------
+    // SERVICE UPDATED SUBJECT INTERNALLY
+    // -------------------------------------------------------
+
     return null;
 
   }
@@ -1240,6 +1317,11 @@ export class ChatWindowComponent
 
     try {
 
+      /*
+       * Page 1 is always loaded when opening a conversation.
+       */
+      this.requestedPages.add(1);
+
       const response =
         await this.loadConversationPage(
           targetUserId,
@@ -1247,47 +1329,62 @@ export class ChatWindowComponent
           this.messagePageSize
         );
 
+      if (this.isDestroyed) {
+        return;
+      }
+
       if (!response) {
 
-        /*
-         * Don't disable pagination if the service
-         * doesn't return pagination metadata.
-         */
         this.messagePageNumber = 1;
 
+        /*
+         * Service may not return metadata.
+         */
         this.hasMoreMessages = true;
 
-        return;
+      } else {
+
+        this.updatePaginationFromResponse(
+          response,
+          1
+        );
 
       }
 
-      this.updatePaginationFromResponse(
-        response,
-        1
-      );
+      /*
+       * IMPORTANT:
+       *
+       * Opening a conversation ALWAYS goes to bottom.
+       */
+      this.initialScrollPending = true;
+
+      await this.waitForViewUpdate();
+
+      if (!this.isDestroyed) {
+
+        this.forceScrollToBottom();
+
+      }
 
       console.log(
         'Initial pagination:',
         {
           pageNumber:
-            response.pageNumber,
+            response?.pageNumber,
 
           pageSize:
-            response.pageSize,
+            response?.pageSize,
 
           totalCount:
-            response.totalCount,
+            response?.totalCount,
 
           totalPages:
-            response.totalPages,
-
-          hasPreviousPage:
-            response.hasPreviousPage,
+            response?.totalPages,
 
           hasNextPage:
-            response.hasNextPage,
+            response?.hasNextPage,
 
-          calculatedHasMore:
+          hasMoreMessages:
             this.hasMoreMessages
         }
       );
@@ -1322,7 +1419,9 @@ export class ChatWindowComponent
         ) {
 
           requestAnimationFrame(() => {
+
             resolve();
+
           });
 
         } else {
@@ -1354,8 +1453,135 @@ export class ChatWindowComponent
 
     this.initialScrollPending = false;
 
+    this.loadingPageNumber = null;
+
+    /*
+     * Very important:
+     *
+     * Pages belong to a conversation.
+     *
+     * When changing chat, forget previous pages.
+     */
+    this.requestedPages.clear();
+
+    /*
+     * Ignore the artificial scroll generated by
+     * setting scrollTop.
+     */
     this.ignoreScrollUntil =
       Date.now() + 1000;
+
+  }
+
+
+  // =========================================================
+  // IS NEAR BOTTOM
+  // =========================================================
+
+  private isNearBottom(): boolean {
+
+    const element =
+      this.scrollContainer?.nativeElement;
+
+    if (!element) {
+      return true;
+    }
+
+    const distanceFromBottom =
+      element.scrollHeight -
+      element.scrollTop -
+      element.clientHeight;
+
+    return distanceFromBottom <= 120;
+
+  }
+
+
+  // =========================================================
+  // GET FIRST VISIBLE MESSAGE
+  // =========================================================
+
+  private getFirstVisibleMessageKey(
+    container: HTMLElement
+  ): string | null {
+
+    const messageElements =
+      container.querySelectorAll(
+        '[data-message-id]'
+      );
+
+    for (
+      const element of Array.from(
+        messageElements
+      )
+    ) {
+
+      const htmlElement =
+        element as HTMLElement;
+
+      const top =
+        htmlElement.offsetTop;
+
+      if (
+        top >=
+        container.scrollTop - 5
+      ) {
+
+        return (
+          htmlElement.dataset[
+            'messageId'
+          ] || null
+        );
+
+      }
+
+    }
+
+    return null;
+
+  }
+
+
+  // =========================================================
+  // RESTORE SCROLL BY MESSAGE
+  // =========================================================
+
+  private restoreScrollByMessage(
+    messageId: string | null
+  ): void {
+
+    if (!messageId) {
+      return;
+    }
+
+    const container =
+      this.scrollContainer?.nativeElement;
+
+    if (!container) {
+      return;
+    }
+
+    const messageElement =
+      container.querySelector(
+        `[data-message-id="${CSS.escape(messageId)}"]`
+      ) as HTMLElement | null;
+
+    if (!messageElement) {
+      return;
+    }
+
+    const containerRect =
+      container.getBoundingClientRect();
+
+    const messageRect =
+      messageElement.getBoundingClientRect();
+
+    const difference =
+      messageRect.top -
+      containerRect.top;
+
+    container.scrollTop +=
+      difference;
 
   }
 
@@ -1501,6 +1727,7 @@ export class ChatWindowComponent
 
       };
 
+
     if (
       service.activeMessagesSubject &&
       typeof service.activeMessagesSubject.getValue ===
@@ -1518,17 +1745,20 @@ export class ChatWindowComponent
 
     }
 
+
     if (Array.isArray(service.activeMessages)) {
 
       return service.activeMessages as MessageWithStatus[];
 
     }
 
+
     if (Array.isArray(service.messages)) {
 
       return service.messages as MessageWithStatus[];
 
     }
+
 
     return [];
 
@@ -1566,9 +1796,11 @@ export class ChatWindowComponent
     const currentStatus =
       this.getMessageStatus(message);
 
+
     if (currentStatus === 'read') {
       return;
     }
+
 
     if (
       currentStatus === 'delivered' &&
@@ -1579,7 +1811,9 @@ export class ChatWindowComponent
 
     }
 
+
     message.status = status;
+
 
     if (
       status === 'delivered' ||
@@ -1600,6 +1834,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (status === 'read') {
 
       message.isRead = true;
@@ -1616,7 +1851,10 @@ export class ChatWindowComponent
 
     }
 
-    this.refreshActiveMessages(messages);
+
+    this.refreshActiveMessages(
+      messages
+    );
 
   }
 
@@ -1648,8 +1886,10 @@ export class ChatWindowComponent
 
       };
 
+
     const updatedMessages =
       [...messages] as unknown[];
+
 
     if (
       typeof service.setActiveMessages ===
@@ -1664,6 +1904,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (
       typeof service.updateActiveMessages ===
       'function'
@@ -1676,6 +1917,7 @@ export class ChatWindowComponent
       return;
 
     }
+
 
     if (
       service.activeMessagesSubject &&
@@ -1735,14 +1977,17 @@ export class ChatWindowComponent
 
     }
 
+
     const status =
       this.normalizeMessageStatus(
         message.status
       );
 
+
     if (status === 'read') {
       return 'read';
     }
+
 
     if (
       message.isDelivered === true ||
@@ -1754,6 +1999,7 @@ export class ChatWindowComponent
       return 'delivered';
 
     }
+
 
     return 'sent';
 
@@ -1809,7 +2055,9 @@ export class ChatWindowComponent
     message: MessageWithStatus
   ): string {
 
-    return this.getMessageStatusText(message);
+    return this.getMessageStatusText(
+      message
+    );
 
   }
 
@@ -1826,6 +2074,7 @@ export class ChatWindowComponent
       message.senderUserId ??
       message.senderId;
 
+
     if (
       !senderId ||
       !this.currentUserId
@@ -1834,6 +2083,7 @@ export class ChatWindowComponent
       return false;
 
     }
+
 
     return (
       String(senderId).toLowerCase() ===
@@ -1855,9 +2105,11 @@ export class ChatWindowComponent
       message.receiverUserId ??
       message.receiverId;
 
+
     if (!receiverId) {
       return false;
     }
+
 
     return (
       String(receiverId).toLowerCase() ===
@@ -1879,6 +2131,7 @@ export class ChatWindowComponent
       return false;
     }
 
+
     const senderId =
       message.senderUserId ??
       message.senderId;
@@ -1887,28 +2140,41 @@ export class ChatWindowComponent
       message.receiverUserId ??
       message.receiverId;
 
+
     if (!senderId || !receiverId) {
       return false;
     }
 
+
     const targetId =
-      String(this.activeTargetUserId).toLowerCase();
+      String(
+        this.activeTargetUserId
+      ).toLowerCase();
 
     const currentId =
-      String(this.currentUserId).toLowerCase();
+      String(
+        this.currentUserId
+      ).toLowerCase();
+
 
     return (
 
       (
-        String(senderId).toLowerCase() === targetId &&
-        String(receiverId).toLowerCase() === currentId
+        String(senderId).toLowerCase() ===
+        targetId &&
+
+        String(receiverId).toLowerCase() ===
+        currentId
       )
 
       ||
 
       (
-        String(senderId).toLowerCase() === currentId &&
-        String(receiverId).toLowerCase() === targetId
+        String(senderId).toLowerCase() ===
+        currentId &&
+
+        String(receiverId).toLowerCase() ===
+        targetId
       )
 
     );
@@ -1927,6 +2193,7 @@ export class ChatWindowComponent
     const messageId =
       this.getMessageId(message);
 
+
     if (
       !messageId ||
       !this.isMessageForCurrentUser(message)
@@ -1936,8 +2203,10 @@ export class ChatWindowComponent
 
     }
 
+
     const status =
       this.getMessageStatus(message);
+
 
     if (
       status === 'delivered' ||
@@ -1947,6 +2216,7 @@ export class ChatWindowComponent
       return;
 
     }
+
 
     try {
 
@@ -1979,12 +2249,14 @@ export class ChatWindowComponent
       return;
     }
 
+
     const incomingMessages =
       messages.filter(
         (message: MessageWithStatus) =>
           this.isMessageForCurrentUser(message) &&
           this.getMessageStatus(message) === 'sent'
       );
+
 
     for (
       const message of incomingMessages
@@ -2014,6 +2286,7 @@ export class ChatWindowComponent
     const messageId =
       this.getMessageId(message);
 
+
     if (
       !messageId ||
       !this.isMessageForCurrentUser(message)
@@ -2023,6 +2296,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (
       this.getMessageStatus(message) === 'read'
     ) {
@@ -2030,6 +2304,7 @@ export class ChatWindowComponent
       return;
 
     }
+
 
     try {
 
@@ -2060,12 +2335,15 @@ export class ChatWindowComponent
       return;
     }
 
+
     const messages =
       this.getActiveMessages();
+
 
     if (!messages.length) {
       return;
     }
+
 
     const unreadMessages =
       messages.filter(
@@ -2074,6 +2352,7 @@ export class ChatWindowComponent
           this.belongsToActiveConversation(message) &&
           this.getMessageStatus(message) !== 'read'
       );
+
 
     for (
       const message of unreadMessages
@@ -2101,6 +2380,7 @@ export class ChatWindowComponent
     const service =
       this.chatService as any;
 
+
     try {
 
       if (
@@ -2114,8 +2394,10 @@ export class ChatWindowComponent
 
       }
 
+
       const result =
         service.getUsers();
+
 
       if (
         result &&
@@ -2163,6 +2445,7 @@ export class ChatWindowComponent
 
       }
 
+
       if (
         result &&
         typeof result.then ===
@@ -2176,6 +2459,7 @@ export class ChatWindowComponent
 
       }
 
+
       if (Array.isArray(result)) {
 
         this.users =
@@ -2184,6 +2468,7 @@ export class ChatWindowComponent
         return;
 
       }
+
 
       this.users = [];
 
@@ -2213,11 +2498,14 @@ export class ChatWindowComponent
       return;
     }
 
+
     const user =
       this.users.find(
         (item: User) =>
-          String(item.id) === String(userId)
+          String(item.id) ===
+          String(userId)
       );
+
 
     if (user) {
 
@@ -2241,17 +2529,22 @@ export class ChatWindowComponent
       return;
     }
 
+
     const user =
       this.users.find(
         (item: User) =>
-          String(item.id) === String(userId)
+          String(item.id) ===
+          String(userId)
       );
+
 
     if (!user) {
       return;
     }
 
+
     user.isOnLine = false;
+
 
     if (lastSeen) {
 
@@ -2275,6 +2568,7 @@ export class ChatWindowComponent
       return false;
     }
 
+
     return this.signalRService
       .isUserOnline(userId);
 
@@ -2290,6 +2584,7 @@ export class ChatWindowComponent
     if (!this.activeTargetUserId) {
       return false;
     }
+
 
     return this.signalRService
       .isUserOnline(
@@ -2308,6 +2603,7 @@ export class ChatWindowComponent
     if (this.isDestroyed) {
       return;
     }
+
 
     setTimeout(() => {
 
@@ -2332,6 +2628,7 @@ export class ChatWindowComponent
       return;
     }
 
+
     // -------------------------------------------------------
     // LOCAL VIDEO
     // -------------------------------------------------------
@@ -2345,6 +2642,7 @@ export class ChatWindowComponent
       const video =
         this.localVideo.nativeElement;
 
+
       if (
         video.srcObject !==
         this.localStream
@@ -2355,11 +2653,13 @@ export class ChatWindowComponent
 
       }
 
+
       video.muted = true;
 
       video.autoplay = true;
 
       video.playsInline = true;
+
 
       if (
         this.lastLocalStream !==
@@ -2390,6 +2690,7 @@ export class ChatWindowComponent
       const video =
         this.remoteVideo.nativeElement;
 
+
       if (
         video.srcObject !==
         this.remoteStream
@@ -2400,11 +2701,13 @@ export class ChatWindowComponent
 
       }
 
+
       video.autoplay = true;
 
       video.playsInline = true;
 
       video.muted = false;
+
 
       if (
         this.lastRemoteStream !==
@@ -2435,6 +2738,7 @@ export class ChatWindowComponent
       const audio =
         this.remoteAudio.nativeElement;
 
+
       if (
         audio.srcObject !==
         this.remoteStream
@@ -2445,11 +2749,13 @@ export class ChatWindowComponent
 
       }
 
+
       audio.autoplay = true;
 
       audio.controls = false;
 
       audio.volume = 1;
+
 
       if (
         this.lastRemoteStream !==
@@ -2494,9 +2800,11 @@ export class ChatWindowComponent
 
     }
 
+
     if (this.isStartingCall) {
       return;
     }
+
 
     this.isStartingCall = true;
 
@@ -2509,6 +2817,7 @@ export class ChatWindowComponent
     this.isMicrophoneMuted = false;
 
     this.isCameraOff = false;
+
 
     try {
 
@@ -2560,9 +2869,11 @@ export class ChatWindowComponent
 
     }
 
+
     if (this.isStartingCall) {
       return;
     }
+
 
     this.isStartingCall = true;
 
@@ -2575,6 +2886,7 @@ export class ChatWindowComponent
     this.isMicrophoneMuted = false;
 
     this.isCameraOff = false;
+
 
     try {
 
@@ -2620,8 +2932,10 @@ export class ChatWindowComponent
       return;
     }
 
+
     const callerId =
       this.incomingCallUserId;
+
 
     this.activeTargetUserId =
       callerId;
@@ -2636,6 +2950,7 @@ export class ChatWindowComponent
     this.callType =
       this.incomingCallType;
 
+
     try {
 
       this.callStatus =
@@ -2643,8 +2958,10 @@ export class ChatWindowComponent
           ? 'Connecting voice call...'
           : 'Connecting video call...';
 
+
       await this.callService
         .acceptCall(callerId);
+
 
       this.incomingCallUserId = null;
 
@@ -2677,8 +2994,10 @@ export class ChatWindowComponent
       return;
     }
 
+
     const callerId =
       this.incomingCallUserId;
+
 
     try {
 
@@ -2693,6 +3012,7 @@ export class ChatWindowComponent
       );
 
     }
+
 
     this.incomingCallUserId = null;
 
@@ -2717,11 +3037,13 @@ export class ChatWindowComponent
       return;
     }
 
+
     try {
 
       const enabled =
         this.callService
           .toggleMicrophone();
+
 
       this.isMicrophoneMuted =
         !enabled;
@@ -2753,11 +3075,13 @@ export class ChatWindowComponent
 
     }
 
+
     try {
 
       const enabled =
         this.callService
           .toggleCamera();
+
 
       this.isCameraOff =
         !enabled;
@@ -2840,6 +3164,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (this.remoteStream) {
 
       this.remoteStream
@@ -2862,6 +3187,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (this.localVideo?.nativeElement) {
 
       const video =
@@ -2872,6 +3198,7 @@ export class ChatWindowComponent
       video.srcObject = null;
 
     }
+
 
     if (this.remoteVideo?.nativeElement) {
 
@@ -2884,6 +3211,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (this.remoteAudio?.nativeElement) {
 
       const audio =
@@ -2894,6 +3222,7 @@ export class ChatWindowComponent
       audio.srcObject = null;
 
     }
+
 
     this.lastLocalStream = null;
 
@@ -2945,6 +3274,7 @@ export class ChatWindowComponent
     const query =
       this.searchQuery.trim();
 
+
     if (!query) {
 
       this.searchResults = [];
@@ -2952,6 +3282,7 @@ export class ChatWindowComponent
       return;
 
     }
+
 
     this.chatService
       .searchUsers(query)
@@ -2995,6 +3326,7 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.openConversation(
       targetUserId,
       targetName
@@ -3016,6 +3348,7 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.openConversation(
       targetUserId,
       targetName
@@ -3025,7 +3358,7 @@ export class ChatWindowComponent
 
 
   // =========================================================
-  // SELECT USER AND START CHAT
+  // SELECT USER
   // =========================================================
 
   public selectUserAndStartChat(
@@ -3036,7 +3369,9 @@ export class ChatWindowComponent
       return;
     }
 
+
     this.closeNewChatModal();
+
 
     this.openConversation(
       user.id,
@@ -3059,171 +3394,144 @@ export class ChatWindowComponent
       return;
     }
 
-    const sameConversation =
-      this.activeTargetUserId === targetUserId;
 
-    this.activeTargetUserId =
-      targetUserId;
+    const sameConversation = this.activeTargetUserId === targetUserId;
 
+    this.activeTargetUserId = targetUserId;
     if (targetName) {
-
-      this.activeTargetName =
-        targetName;
-
+      this.activeTargetName = targetName;
     }
-
+    /*
+     * If the same conversation is selected again,
+     * keep the current scroll position.
+     */
     if (sameConversation) {
       return;
     }
-
+    /*
+     * Reset all pagination state.
+     */
     this.resetMessagePagination();
-
-    this.shouldScrollToBottom = true;
-
+    /*
+     * IMPORTANT:
+     *
+     * New conversation must start at bottom.
+     */
     this.initialScrollPending = true;
-
+    /*
+     * Load page 1.
+     */
     void this.loadInitialMessagePage(
       targetUserId
     );
 
-    this.forceScrollAfterConversationLoad();
-
-    setTimeout(() => {
-
-      if (!this.isDestroyed) {
-
-        void this.markActiveConversationAsRead();
-
-      }
-
-    }, 300);
-
-  }
-
-
-  // =========================================================
-  // FORCE INITIAL SCROLL
-  // =========================================================
-
-  private forceScrollAfterConversationLoad(): void {
-
-    if (this.isDestroyed) {
-      return;
-    }
-
-    this.initialScrollPending = true;
+    /*
+     * Try immediately.
+     */
 
     this.forceScrollToBottom();
 
+    /*
+     * Then try again after Angular renders messages.
+     */
     setTimeout(() => {
-
       if (!this.isDestroyed) {
-
         this.forceScrollToBottom();
-
       }
-
     }, 50);
 
     setTimeout(() => {
-
       if (!this.isDestroyed) {
-
         this.forceScrollToBottom();
-
       }
-
     }, 150);
 
     setTimeout(() => {
-
       if (!this.isDestroyed) {
-
         this.forceScrollToBottom();
-
       }
-
     }, 400);
 
+    /*
+     * Mark conversation read.
+     */
+    setTimeout(() => {
+      if (!this.isDestroyed) {
+        void this.markActiveConversationAsRead();
+      }
+    }, 300);
   }
 
+  // =========================================================
+  // INITIAL BOTTOM SCROLL
+  // =========================================================
+
+  private scheduleInitialBottomScroll(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    this.initialScrollPending = true;
+    setTimeout(() => {
+      if (this.isDestroyed) {
+        return;
+      }
+      this.forceScrollToBottom();
+      requestAnimationFrame(() => {
+        if (this.isDestroyed) {
+          return;
+        }
+        this.forceScrollToBottom();
+      });
+    }, 0);
+  }
 
   // =========================================================
   // SEND MESSAGE
   // =========================================================
 
   public async onSendMessage(): Promise<void> {
-
     const message =
       this.newMessageText.trim();
-
-    if (
-      !message ||
-      !this.activeTargetUserId ||
-      this.isSending
-    ) {
-
+    if (!message || !this.activeTargetUserId || this.isSending) {
       return;
-
     }
-
     const targetUserId =
       this.activeTargetUserId;
-
     this.newMessageText = '';
-
     this.isSending = true;
-
     try {
-
       await this.chatService
         .sendMessage(
           targetUserId,
           message
         );
-
-      this.shouldScrollToBottom = true;
-
+      /*
+       * Sending a message means we want bottom.
+       */
       this.scheduleScrollToBottom();
 
     } catch (error: unknown) {
-
       console.error(
         'Send message failed:',
         error
       );
-
       this.newMessageText =
         message;
-
     } finally {
-
       this.isSending = false;
-
     }
-
   }
-
 
   // =========================================================
   // MESSAGE KEYDOWN
   // =========================================================
 
-  public onMessageKeydown(
-    event: KeyboardEvent
-  ): void {
-
-    if (
-      event.key === 'Enter' &&
-      !event.shiftKey
-    ) {
-
+  public onMessageKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey)
+    {
       event.preventDefault();
-
       void this.onSendMessage();
-
     }
-
   }
 
 
@@ -3232,45 +3540,30 @@ export class ChatWindowComponent
   // =========================================================
 
   private scheduleScrollToBottom(): void {
-
     if (this.isDestroyed) {
       return;
     }
-
     if (this.bottomScrollScheduled) {
       return;
     }
-
     this.bottomScrollScheduled = true;
 
     setTimeout(() => {
-
       if (this.isDestroyed) {
-
         this.bottomScrollScheduled = false;
-
         return;
-
       }
-
       this.forceScrollToBottom();
 
       requestAnimationFrame(() => {
-
         if (!this.isDestroyed) {
-
           this.forceScrollToBottom();
-
         }
-
-        this.bottomScrollScheduled = false;
-
+        this.bottomScrollScheduled =
+          false;
       });
-
     }, 0);
-
   }
-
 
   // =========================================================
   // FORCE BOTTOM SCROLL
@@ -3304,9 +3597,7 @@ export class ChatWindowComponent
         this.ignoreScrollUntil,
         Date.now() + 250
       );
-
   }
-
 
   // =========================================================
   // AVATAR COLOR
@@ -3339,7 +3630,6 @@ export class ChatWindowComponent
       '#D946EF',
       '#EC4899',
       '#F43F5E'
-
     ];
 
     let hash = 0;
@@ -3349,34 +3639,24 @@ export class ChatWindowComponent
       i < text.length;
       i++
     ) {
-
       hash =
         text.charCodeAt(i) +
         ((hash << 5) - hash);
-
     }
 
     const index =
       Math.abs(hash) %
       colors.length;
-
     return colors[index];
-
   }
-
 
   // =========================================================
   // DESTROY
   // =========================================================
 
   ngOnDestroy(): void {
-
     this.isDestroyed = true;
-
     this.stopMedia();
-
     this.subscriptions.unsubscribe();
-
   }
-
 }
