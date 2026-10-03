@@ -1,1651 +1,1518 @@
 /* =========================================================
-   GLOBAL PAGE - NEVER SCROLL
-   ========================================================= */
+GLOBAL
+========================================================= */
 
-html,
-body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-
-  overflow: hidden !important;
-
-  box-sizing: border-box;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-app-root,
-app-chat {
-  display: block;
-
-  width: 100%;
-  height: 100%;
-
-  min-width: 0;
-  min-height: 0;
-
-  overflow: hidden !important;
-}
-
-
-/* =========================================================
-   MAIN CHAT CONTAINER
-   ========================================================= */
+/* {
+box-sizing: border-box;
+} */
 
 .chat-container {
-  display: flex;
-  flex-direction: row;
-
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-
-  min-width: 0;
-  min-height: 0;
-
-  overflow: hidden;
-
-  background: #f1f3f5;
+width: 100%;
+height: 100vh;
+height: 100dvh;
+display: flex;
+overflow: hidden;
+background: #f5f7fb;
+color: #1f2937;
+font-family:
+Inter,
+-apple-system,
+BlinkMacSystemFont,
+"Segoe UI",
+Roboto,
+Helvetica,
+Arial,
+sans-serif;
 }
 
-
 /* =========================================================
-   SIDEBAR
-   ========================================================= */
+SIDEBAR
+========================================================= */
 
 .chat-sidebar {
-  width: 300px;
-  flex: 0 0 300px;
-
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-
-  display: flex;
-  flex-direction: column;
-
-  overflow: hidden;
-
-  background: #f8f9fa;
-
-  border-right: 1px solid #ddd;
+width: 340px;
+min-width: 300px;
+height: 100%;
+display: flex;
+flex-direction: column;
+background: #ffffff;
+border-right: 1px solid #e5e7eb;
 }
 
-
-/* =========================================================
-   SIDEBAR HEADER
-   ========================================================= */
-
 .sidebar-header {
-  flex: 0 0 64px;
-
-  width: 100%;
-  height: 64px;
-  min-height: 64px;
-
-  padding: 0 1rem;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  background: #fff;
-
-  border-bottom: 1px solid #ddd;
-
-  overflow: hidden;
+min-height: 76px;
+padding: 18px 20px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+border-bottom: 1px solid #edf0f4;
 }
 
 .sidebar-header h2 {
-  margin: 0;
-
-  font-size: 1.2rem;
-
-  color: #212529;
+margin: 0;
+font-size: 20px;
+font-weight: 700;
+color: #111827;
 }
 
-
-/* =========================================================
-   NEW CHAT BUTTON
-   ========================================================= */
-
 .new-chat-btn {
-  flex-shrink: 0;
-
-  border: none;
-
-  background: #007bff;
-  color: #fff;
-
-  padding: 0.45rem 0.8rem;
-
-  border-radius: 6px;
-
-  cursor: pointer;
-
-  font-size: 0.85rem;
+border: 0;
+border-radius: 10px;
+padding: 9px 13px;
+background: #2563eb;
+color: #ffffff;
+font-size: 13px;
+font-weight: 600;
+cursor: pointer;
+transition:
+background 0.2s ease,
+transform 0.2s ease,
+box-shadow 0.2s ease;
 }
 
 .new-chat-btn:hover {
-  background: #0056b3;
+background: #1d4ed8;
+box-shadow: 0 5px 14px rgba(37, 99, 235, 0.22);
+transform: translateY(-1px);
 }
 
+.new-chat-btn:active {
+transform: translateY(0);
+}
 
 /* =========================================================
-   SEARCH AREA
-   ========================================================= */
+SEARCH
+========================================================= */
 
 .search-box {
-  flex: 0 0 auto;
-
-  width: 100%;
-
-  padding: 0.75rem;
-
-  background: #fff;
-
-  border-bottom: 1px solid #ddd;
-
-  overflow: visible;
+padding: 14px 16px;
+background: #ffffff;
+border-bottom: 1px solid #edf0f4;
 }
 
 .search-box input {
-  display: block;
-
-  width: 100%;
-
-  padding: 0.6rem 0.7rem;
-
-  border: 1px solid #ccc;
-
-  border-radius: 6px;
-
-  outline: none;
-
-  font-size: 0.9rem;
+width: 100%;
+height: 42px;
+padding: 0 13px;
+border: 1px solid #d9dee7;
+border-radius: 10px;
+outline: none;
+background: #f8fafc;
+color: #111827;
+font-size: 14px;
+transition:
+border-color 0.2s ease,
+box-shadow 0.2s ease,
+background 0.2s ease;
 }
 
 .search-box input:focus {
-  border-color: #007bff;
-
-  box-shadow:
-    0 0 0 2px rgba(0, 123, 255, 0.1);
+background: #ffffff;
+border-color: #2563eb;
+box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
 }
 
-
-/* =========================================================
-   SEARCH RESULTS - ONLY THIS SMALL AREA SCROLLS
-   ========================================================= */
-
 .search-results-list {
-  max-height: 200px;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  overscroll-behavior: contain;
-
-  -webkit-overflow-scrolling: touch;
+max-height: 220px;
+overflow-y: auto;
+margin-top: 8px;
 }
 
 .search-user-item {
-  padding: 0.65rem;
-
-  cursor: pointer;
-
-  border-bottom: 1px solid #eee;
-
-  background: #fff;
+display: flex;
+flex-direction: column;
+gap: 2px;
+padding: 10px 11px;
+border-radius: 9px;
+cursor: pointer;
+transition: background 0.18s ease;
 }
 
 .search-user-item:hover {
-  background: #e9ecef;
+background: #f1f5f9;
 }
 
+.search-user-item .user-name {
+font-size: 14px;
+font-weight: 600;
+color: #111827;
+}
+
+.search-user-item .user-email {
+font-size: 12px;
+color: #64748b;
+}
+
+.no-results {
+margin: 12px 5px;
+color: #94a3b8;
+font-size: 13px;
+}
+
+.close-btn {
+width: 100%;
+margin-top: 10px;
+height: 38px;
+border: 1px solid #dbe1e8;
+border-radius: 9px;
+background: #ffffff;
+color: #475569;
+font-size: 13px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+background: #f8fafc;
+border-color: #cbd5e1;
+}
 
 /* =========================================================
-   CONVERSATION LIST
-   THIS IS A SCROLLABLE AREA
-   ========================================================= */
+CONVERSATION LIST
+========================================================= */
 
 .conversation-list {
-  flex: 1 1 0;
-
-  width: 100%;
-
-  min-width: 0;
-  min-height: 0;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  overscroll-behavior-y: contain;
-
-  -webkit-overflow-scrolling: touch;
-
-  scrollbar-width: thin;
-  scrollbar-color: #b8b8b8 transparent;
+flex: 1;
+overflow-y: auto;
+padding: 8px;
 }
 
+.conversation-list::-webkit-scrollbar,
+.message-stream::-webkit-scrollbar,
+.search-results-list::-webkit-scrollbar {
+width: 6px;
+}
 
-/* =========================================================
-   CONVERSATION ITEM
-   ========================================================= */
+.conversation-list::-webkit-scrollbar-thumb,
+.message-stream::-webkit-scrollbar-thumb,
+.search-results-list::-webkit-scrollbar-thumb {
+background: #cbd5e1;
+border-radius: 20px;
+}
 
 .conversation-item {
-  display: flex;
-  align-items: center;
-
-  width: 100%;
-
-  min-width: 0;
-
-  padding: 0.75rem;
-
-  cursor: pointer;
-
-  border-bottom: 1px solid #eee;
-
-  background: #f8f9fa;
+min-height: 72px;
+display: flex;
+align-items: center;
+gap: 12px;
+margin-bottom: 3px;
+padding: 10px 11px;
+border-radius: 12px;
+cursor: pointer;
+transition:
+background 0.18s ease,
+transform 0.18s ease;
 }
 
 .conversation-item:hover {
-  background: #e9ecef;
+background: #f5f7fa;
 }
 
 .conversation-item.active {
-  background: #dee2e6;
+background: #eff6ff;
 }
-
-
-/* =========================================================
-   CONVERSATION INFO
-   ========================================================= */
-
-.conversation-info {
-  flex: 1 1 auto;
-
-  min-width: 0;
-}
-
-.conversation-top {
-  display: flex;
-  align-items: center;
-
-  min-width: 0;
-
-  gap: 0.5rem;
-}
-
-.conversation-top .user-name {
-  min-width: 0;
-
-  overflow: hidden;
-
-  white-space: nowrap;
-
-  text-overflow: ellipsis;
-}
-
-
-/* =========================================================
-   AVATAR
-   ========================================================= */
 
 .avatar {
-  position: relative;
-
-  flex: 0 0 62px;
-
-  width: 62px;
-  height: 62px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  margin-right: 0.75rem;
-
-  border-radius: 50%;
-
-  background: #e5e7eb;
-
-  color: #fff;
-
-  font-weight: bold;
+position: relative;
+width: 46px;
+height: 46px;
+min-width: 46px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+color: #ffffff;
+font-size: 17px;
+font-weight: 700;
 }
 
 .avatar-status {
-  position: absolute;
-
-  right: -1px;
-  bottom: -1px;
-
-  width: 25px;
-  height: 25px;
-
-  border: 2px solid #fff;
-
-  border-radius: 50%;
+position: absolute;
+right: -1px;
+bottom: 1px;
+width: 12px;
+height: 12px;
+border: 2px solid #ffffff;
+border-radius: 50%;
+background: #94a3b8;
 }
 
 .avatar-status.online {
-  background: #22c55e;
+background: #22c55e;
 }
 
 .avatar-status.offline {
-  background: #9ca3af;
+background: #94a3b8;
 }
 
-
-/* =========================================================
-   LAST MESSAGE
-   ========================================================= */
-
-.last-message-row {
-  min-width: 0;
+.conversation-info {
+min-width: 0;
+flex: 1;
 }
 
-.last-message {
-  margin: 0.2rem 0 0;
+.conversation-top {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+}
 
-  color: #6c757d;
-
-  font-size: 0.82rem;
-
-  white-space: nowrap;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
+.conversation-top .user-name {
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+color: #1e293b;
+font-size: 14px;
+font-weight: 650;
 }
 
 .unread-badge {
-  flex-shrink: 0;
-
-  min-width: 20px;
-  height: 20px;
-
-  padding: 0 5px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 10px;
-
-  background: #007bff;
-
-  color: #fff;
-
-  font-size: 11px;
-
-  font-weight: 600;
+min-width: 20px;
+height: 20px;
+padding: 0 6px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border-radius: 10px;
+background: #2563eb;
+color: #ffffff;
+font-size: 11px;
+font-weight: 700;
 }
 
+.last-message-row {
+margin-top: 5px;
+}
+
+.last-message {
+margin: 0;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+color: #94a3b8;
+font-size: 12px;
+}
+
+.empty-state {
+padding: 40px 20px;
+text-align: center;
+color: #94a3b8;
+font-size: 14px;
+}
 
 /* =========================================================
-   CHAT WINDOW
-   ========================================================= */
+CHAT WINDOW
+========================================================= */
 
 .chat-window {
-  flex: 1 1 auto;
-
-  width: 0;
-  height: 100%;
-
-  min-width: 0;
-  min-height: 0;
-
-  display: flex;
-  flex-direction: column;
-
-  overflow: hidden;
-
-  position: relative;
-
-  background: #fff;
+position: relative;
+flex: 1;
+min-width: 0;
+height: 100%;
+display: flex;
+flex-direction: column;
+background: #f8fafc;
 }
-
 
 /* =========================================================
-   CHAT HEADER
-   ========================================================= */
+CHAT HEADER
+========================================================= */
 
 .chat-header {
-  flex: 0 0 64px;
-
-  width: 100%;
-  height: 64px;
-  min-height: 64px;
-
-  padding: 0 1rem;
-
-  display: flex;
-  align-items: center;
-
-  gap: 0.75rem;
-
-  background: #fff;
-
-  border-bottom: 1px solid #ddd;
-
-  overflow: hidden;
-
-  z-index: 2;
+min-height: 76px;
+padding: 13px 22px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 20px;
+background: #ffffff;
+border-bottom: 1px solid #e5e7eb;
+z-index: 5;
 }
 
-.chat-header h3 {
-  margin: 0;
-
-  font-size: 1rem;
-
-  color: #212529;
-}
-
-.user-status {
-  min-width: 0;
+.user-status h3 {
+margin: 0;
+display: flex;
+align-items: center;
+gap: 8px;
+color: #111827;
+font-size: 16px;
+font-weight: 700;
 }
 
 .status-dot {
-  display: inline-block;
-
-  width: 9px;
-  height: 9px;
-
-  margin-right: 7px;
-
-  border-radius: 50%;
+width: 9px;
+height: 9px;
+border-radius: 50%;
+background: #94a3b8;
 }
 
 .status-dot.online {
-  background: #22c55e;
-
-  box-shadow:
-    0 0 5px rgba(34, 197, 94, 0.6);
+background: #22c55e;
+box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.10);
 }
 
 .status-dot.offline {
-  background: #9ca3af;
+background: #94a3b8;
 }
 
 .status-indicator {
-  display: block;
-
-  margin-top: 3px;
-
-  font-size: 13px;
+display: block;
+margin-top: 3px;
+margin-left: 17px;
+font-size: 11px;
+font-weight: 500;
 }
 
 .status-indicator.online {
-  color: #22c55e;
+color: #16a34a;
 }
 
 .status-indicator.offline {
-  color: #9ca3af;
+color: #94a3b8;
 }
 
-
 /* =========================================================
-   CALL ACTIONS
-   ========================================================= */
+HEADER CALL BUTTONS
+========================================================= */
 
 .call-actions {
-  margin-left: auto;
-
-  display: flex;
-  align-items: center;
-
-  gap: 12px;
-
-  flex-shrink: 0;
+display: flex;
+align-items: center;
+gap: 9px;
 }
 
 .call-icon-button {
-  width: 48px;
-  height: 48px;
-
-  padding: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: 0;
-  border-radius: 50%;
-
-  color: #fff;
-
-  cursor: pointer;
-
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease;
+width: 42px;
+height: 42px;
+padding: 0;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+border: 0;
+border-radius: 50%;
+cursor: pointer;
+transition:
+transform 0.18s ease,
+box-shadow 0.18s ease,
+background 0.18s ease;
 }
 
 .call-icon-button svg {
-  width: 23px;
-  height: 23px;
-
-  fill: currentColor;
+width: 20px;
+height: 20px;
+fill: currentColor;
 }
 
-.call-icon-button:hover {
-  transform: scale(1.07);
+.voice-call-button {
+background: #ecfdf5;
+color: #16a34a;
 }
 
-.call-icon-button:active {
-  transform: scale(0.94);
+.voice-call-button:hover {
+background: #dcfce7;
+box-shadow: 0 5px 14px rgba(22, 163, 74, 0.16);
+transform: translateY(-1px);
+}
+
+.video-call-button {
+background: #eff6ff;
+color: #2563eb;
+}
+
+.video-call-button:hover {
+background: #dbeafe;
+box-shadow: 0 5px 14px rgba(37, 99, 235, 0.16);
+transform: translateY(-1px);
 }
 
 .call-icon-button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
+opacity: 0.45;
+cursor: not-allowed;
+transform: none;
+box-shadow: none;
 }
-
-
-/* WhatsApp-style green voice button */
-
-.voice-call-button {
-  background: #25d366;
-
-  box-shadow:
-    0 3px 10px rgba(37, 211, 102, 0.35);
-}
-
-.voice-call-button:hover {
-  background: #20bd5a;
-}
-
-
-/* Messenger/Instagram-style blue video button */
-
-.video-call-button {
-  background: #0084ff;
-
-  box-shadow:
-    0 3px 10px rgba(0, 132, 255, 0.35);
-}
-
-.video-call-button:hover {
-  background: #0074e0;
-}
-
-
-.voice-call-button:hover {
-  background: #157347;
-}
-
-.video-call-button {
-  background: #007bff;
-}
-
-.video-call-button:hover {
-  background: #0056b3;
-}
-
-.voice-call-button:disabled,
-.video-call-button:disabled {
-  opacity: 0.5;
-
-  cursor: not-allowed;
-}
-
 
 /* =========================================================
-   ACTIVE CALL BAR
-   ========================================================= */
-
-.active-call-bar {
-  flex: 0 0 auto;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0.65rem 1rem;
-
-  background: #212529;
-
-  color: #fff;
-
-  border-bottom: 1px solid #111;
-}
-
-.active-call-info {
-  display: flex;
-  align-items: center;
-
-  gap: 0.6rem;
-}
-
-.active-call-status {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.call-status-dot {
-  width: 10px;
-  height: 10px;
-
-  flex-shrink: 0;
-
-  background: #28a745;
-
-  border-radius: 50%;
-
-  animation: callPulse 1.5s infinite;
-}
-
-@keyframes callPulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.35;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-
-/* =========================================================
-   VIDEO CALL AREA
-   ========================================================= */
-
-.video-call-area {
-  flex: 0 0 auto;
-
-  position: relative;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  gap: 1rem;
-
-  padding: 1rem;
-
-  min-height: 220px;
-  max-height: 320px;
-
-  background: #111;
-
-  overflow: hidden;
-}
-
-.remote-video {
-  display: block;
-
-  width: 100%;
-  max-width: 600px;
-
-  height: 260px;
-
-  object-fit: cover;
-
-  background: #000;
-
-  border-radius: 10px;
-}
-
-.local-video {
-  position: absolute;
-
-  right: 20px;
-  bottom: 20px;
-
-  width: 150px;
-  height: 100px;
-
-  object-fit: cover;
-
-  background: #222;
-
-  border: 2px solid #fff;
-
-  border-radius: 8px;
-}
-
-
-/* =========================================================
-   MESSAGE STREAM
-   THIS IS THE ONLY MAIN CHAT SCROLL
-   ========================================================= */
+MESSAGE STREAM
+========================================================= */
 
 .message-stream {
-  flex: 1 1 0;
-
-  width: 100%;
-
-  min-width: 0;
-  min-height: 0;
-
-  padding: 1rem;
-
-  background: #f1f3f5;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  overscroll-behavior-y: contain;
-
-  -webkit-overflow-scrolling: touch;
-
-  scrollbar-width: thin;
-  scrollbar-color: #b8b8b8 transparent;
-
-  scroll-behavior: smooth;
+flex: 1;
+overflow-y: auto;
+padding: 24px;
+scroll-behavior: smooth;
 }
 
-
-/* =========================================================
-   MESSAGE BUBBLES
-   ========================================================= */
-
 .message-bubble-wrapper {
-  display: flex;
-
-  width: 100%;
-
-  margin-bottom: 0.75rem;
-
-  flex-shrink: 0;
+width: 100%;
+display: flex;
+margin-bottom: 10px;
 }
 
 .message-bubble-wrapper.sent {
-  justify-content: flex-end;
+justify-content: flex-end;
 }
 
 .message-bubble-wrapper.received {
-  justify-content: flex-start;
+justify-content: flex-start;
 }
 
 .message-bubble {
-  max-width: 70%;
-
-  padding: 0.55rem 0.8rem;
-
-  border-radius: 12px;
-
-  background: #fff;
-
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.1);
-
-  overflow-wrap: anywhere;
-
-  word-wrap: break-word;
-
-  white-space: pre-wrap;
+max-width: min(70%, 620px);
+padding: 10px 13px 7px;
+border-radius: 15px;
+box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
 .message-bubble-wrapper.sent .message-bubble {
-  background: #007bff;
-
-  color: #fff;
-
-  border-bottom-right-radius: 4px;
+background: #2563eb;
+color: #ffffff;
+border-bottom-right-radius: 5px;
 }
 
 .message-bubble-wrapper.received .message-bubble {
-  border-bottom-left-radius: 4px;
+background: #ffffff;
+color: #1e293b;
+border: 1px solid #edf0f4;
+border-bottom-left-radius: 5px;
 }
 
 .message-content {
-  margin: 0;
-
-  line-height: 1.4;
+margin: 0;
+white-space: pre-wrap;
+overflow-wrap: anywhere;
+font-size: 14px;
+line-height: 1.5;
 }
 
 .message-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-
-  gap: 5px;
-
-  margin-top: 3px;
+display: flex;
+align-items: center;
+justify-content: flex-end;
+gap: 6px;
+margin-top: 4px;
 }
 
 .message-timestamp {
-  font-size: 0.7rem;
-
-  opacity: 0.7;
-
-  white-space: nowrap;
+font-size: 10px;
+opacity: 0.65;
 }
 
 .message-status {
-  font-size: 0.75rem;
-
-  font-weight: 600;
-
-  white-space: nowrap;
+font-size: 12px;
+line-height: 1;
+font-weight: 700;
 }
 
+.status-sending {
+opacity: 0.7;
+}
 
-/* =========================================================
-   NO MESSAGES
-   ========================================================= */
+.status-sent {
+opacity: 0.75;
+}
+
+.status-delivered {
+opacity: 0.9;
+}
+
+.status-read {
+color: #bfdbfe;
+}
 
 .no-messages {
-  min-height: 100%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 2rem;
-
-  color: #6c757d;
-
-  text-align: center;
+width: 100%;
+height: 100%;
+display: flex;
+align-items: center;
+justify-content: center;
+text-align: center;
 }
 
 .no-messages p {
-  margin: 0;
+max-width: 300px;
+color: #94a3b8;
+font-size: 14px;
 }
 
-
 /* =========================================================
-   CHAT INPUT
-   ========================================================= */
+MESSAGE INPUT
+========================================================= */
 
 .chat-input-area {
-  flex: 0 0 auto;
-
-  width: 100%;
-
-  padding: 0.75rem;
-
-  background: #fff;
-
-  border-top: 1px solid #ddd;
-
-  z-index: 2;
+padding: 13px 18px;
+background: #ffffff;
+border-top: 1px solid #e5e7eb;
 }
 
 .input-form {
-  display: flex;
-  align-items: center;
-
-  width: 100%;
+display: flex;
+align-items: center;
+gap: 9px;
 }
 
 .input-form input {
-  flex: 1 1 auto;
-
-  min-width: 0;
-
-  padding: 0.65rem 0.75rem;
-
-  border: 1px solid #ccc;
-
-  border-radius: 8px;
-
-  outline: none;
-
-  font-size: 0.9rem;
+flex: 1;
+min-width: 0;
+height: 44px;
+padding: 0 15px;
+border: 1px solid #dbe1e8;
+border-radius: 12px;
+outline: none;
+background: #f8fafc;
+color: #111827;
+font-size: 14px;
+transition:
+border-color 0.2s ease,
+box-shadow 0.2s ease,
+background 0.2s ease;
 }
 
 .input-form input:focus {
-  border-color: #007bff;
-
-  box-shadow:
-    0 0 0 2px rgba(0, 123, 255, 0.1);
-}
-
-.input-form input:disabled {
-  background: #f1f3f5;
-
-  cursor: not-allowed;
+background: #ffffff;
+border-color: #2563eb;
+box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.09);
 }
 
 .send-btn {
-  flex-shrink: 0;
-
-  margin-left: 0.5rem;
-
-  padding: 0.65rem 1rem;
-
-  border: none;
-
-  background: #007bff;
-
-  color: #fff;
-
-  border-radius: 8px;
-
-  cursor: pointer;
+height: 44px;
+padding: 0 20px;
+border: 0;
+border-radius: 11px;
+background: #2563eb;
+color: #ffffff;
+font-size: 13px;
+font-weight: 650;
+cursor: pointer;
+transition: all 0.2s ease;
 }
 
-.send-btn:hover {
-  background: #0056b3;
+.send-btn:hover:not(:disabled) {
+background: #1d4ed8;
+box-shadow: 0 5px 14px rgba(37, 99, 235, 0.20);
 }
 
 .send-btn:disabled {
-  opacity: 0.6;
-
-  cursor: not-allowed;
+opacity: 0.45;
+cursor: not-allowed;
 }
-
 
 /* =========================================================
-   SCROLLBAR STYLE
-   ========================================================= */
-
-.message-stream::-webkit-scrollbar,
-.conversation-list::-webkit-scrollbar,
-.search-results-list::-webkit-scrollbar {
-  width: 7px;
-}
-
-.message-stream::-webkit-scrollbar-track,
-.conversation-list::-webkit-scrollbar-track,
-.search-results-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.message-stream::-webkit-scrollbar-thumb,
-.conversation-list::-webkit-scrollbar-thumb,
-.search-results-list::-webkit-scrollbar-thumb {
-  background: #b8b8b8;
-
-  border-radius: 10px;
-}
-
-.message-stream::-webkit-scrollbar-thumb:hover,
-.conversation-list::-webkit-scrollbar-thumb:hover,
-.search-results-list::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-
-/* =========================================================
-   NO ACTIVE CHAT
-   ========================================================= */
+NO ACTIVE CHAT
+========================================================= */
 
 .no-active-chat {
-  flex: 1 1 0;
-
-  min-width: 0;
-  min-height: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #f8f9fa;
-
-  overflow: hidden;
+width: 100%;
+height: 100%;
+display: flex;
+align-items: center;
+justify-content: center;
+background:
+radial-gradient(
+circle at center,
+#ffffff 0%,
+#f8fafc 65%
+);
 }
 
 .placeholder-content {
-  padding: 2rem;
-
-  color: #6c757d;
-
-  text-align: center;
+text-align: center;
+padding: 30px;
 }
 
+.placeholder-content .icon {
+width: 68px;
+height: 68px;
+margin: 0 auto 18px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+background: #eff6ff;
+font-size: 30px;
+}
+
+.placeholder-content h3 {
+margin: 0 0 8px;
+color: #1e293b;
+font-size: 20px;
+}
+
+.placeholder-content p {
+max-width: 360px;
+margin: 0;
+color: #94a3b8;
+font-size: 14px;
+line-height: 1.6;
+}
 
 /* =========================================================
-   INCOMING CALL
-   ========================================================= */
+INCOMING CALL OVERLAY
+========================================================= */
 
 .incoming-call-overlay {
-  position: fixed;
-
-  top: 20px;
-  right: 20px;
-
-  width: 340px;
-
-  z-index: 9999;
-
-  background: #fff;
-
-  border-radius: 14px;
-
-  box-shadow:
-    0 10px 35px rgba(0, 0, 0, 0.25),
-    0 2px 8px rgba(0, 0, 0, 0.12);
-
-  overflow: hidden;
+position: fixed;
+inset: 0;
+z-index: 9998;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 20px;
+background: rgba(15, 23, 42, 0.60);
+backdrop-filter: blur(8px);
+-webkit-backdrop-filter: blur(8px);
 }
 
-
-/* =========================================================
-   MODAL
-   ========================================================= */
-
-.new-chat-modal {
-  position: fixed;
-
-  inset: 0;
-
-  z-index: 10000;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(0, 0, 0, 0.45);
-
-  overflow: hidden;
+.incoming-call-card {
+width: min(390px, 100%);
+padding: 32px 26px 26px;
+text-align: center;
+background: #ffffff;
+border-radius: 22px;
+box-shadow:
+0 25px 60px rgba(15, 23, 42, 0.28),
+0 8px 25px rgba(15, 23, 42, 0.12);
 }
 
-.new-chat-modal-content {
-  width: 90%;
-  max-width: 450px;
-
-  padding: 1.25rem;
-
-  background: #fff;
-
-  border-radius: 12px;
+.incoming-avatar {
+width: 78px;
+height: 78px;
+margin: 0 auto 18px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+background: linear-gradient(135deg, #2563eb, #7c3aed);
+color: #ffffff;
+font-size: 29px;
+font-weight: 700;
+box-shadow: 0 8px 25px rgba(37, 99, 235, 0.25);
 }
 
+.incoming-call-card h2 {
+margin: 0 0 8px;
+color: #111827;
+font-size: 20px;
+}
+
+.incoming-call-card p {
+margin: 0;
+color: #64748b;
+font-size: 14px;
+}
+
+.incoming-call-actions {
+display: flex;
+justify-content: center;
+gap: 12px;
+margin-top: 25px;
+}
+
+.accept-call-button,
+.reject-call-button {
+min-width: 120px;
+height: 45px;
+padding: 0 17px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+border: 0;
+border-radius: 12px;
+color: #ffffff;
+font-size: 13px;
+font-weight: 650;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.accept-call-button {
+background: #22c55e;
+}
+
+.accept-call-button:hover {
+background: #16a34a;
+box-shadow: 0 7px 18px rgba(34, 197, 94, 0.22);
+transform: translateY(-1px);
+}
+
+.reject-call-button {
+background: #ef4444;
+}
+
+.reject-call-button:hover {
+background: #dc2626;
+box-shadow: 0 7px 18px rgba(239, 68, 68, 0.22);
+transform: translateY(-1px);
+}
+
+.accept-call-button svg,
+.reject-call-button svg {
+width: 18px;
+height: 18px;
+}
+
+.accept-call-button svg {
+fill: currentColor;
+}
+
+.reject-call-button svg {
+fill: none;
+stroke: currentColor;
+stroke-width: 2;
+stroke-linecap: round;
+}
 
 /* =========================================================
-   FULLSCREEN CALL
-   ========================================================= */
-
-/* .fullscreen-call {
-  position: fixed;
-
-  inset: 0;
-
-  z-index: 11000;
-
-  background: #111;
-
-  overflow: hidden;
-} */
-
-/* =========================================================
-   FULLSCREEN VIDEO CALL
-   ========================================================= */
+FULLSCREEN CALL
+========================================================= */
 
 .fullscreen-call {
-  position: fixed;
-
-  inset: 0;
-
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-
-  z-index: 11000;
-
-  display: flex;
-  flex-direction: column;
-
-  background: #000;
-
-  overflow: hidden;
+position: fixed;
+inset: 0;
+z-index: 9999;
+overflow: hidden;
+background: #080b12;
 }
-
 
 /* =========================================================
-   FULLSCREEN REMOTE VIDEO
-   ========================================================= */
+VOICE CALL SCREEN
+========================================================= */
 
-.fullscreen-call .remote-video {
-  position: absolute;
-
-  inset: 0;
-
-  width: 100%;
-  height: 100%;
-
-  max-width: none;
-
-  display: block;
-
-  object-fit: cover;
-
-  background: #000;
-
-  border: 0;
-
-  border-radius: 0;
-
-  z-index: 1;
+.voice-call-screen {
+display: flex;
+align-items: center;
+justify-content: center;
+background:
+radial-gradient(
+circle at 50% 35%,
+#1e293b 0%,
+#0f172a 38%,
+#020617 100%
+);
 }
 
+.voice-call-content {
+position: relative;
+z-index: 2;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+text-align: center;
+padding-bottom: 80px;
+}
+
+.voice-call-avatar {
+width: 128px;
+height: 128px;
+margin-bottom: 22px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: 4px solid rgba(255, 255, 255, 0.10);
+border-radius: 50%;
+color: #ffffff;
+font-size: 48px;
+font-weight: 700;
+box-shadow:
+0 0 0 14px rgba(255, 255, 255, 0.03),
+0 20px 55px rgba(0, 0, 0, 0.35);
+}
+
+.voice-call-content h2 {
+margin: 0;
+color: #ffffff;
+font-size: 27px;
+font-weight: 700;
+}
+
+.call-status {
+margin: 9px 0 0;
+color: #94a3b8;
+font-size: 14px;
+}
 
 /* =========================================================
-   LOCAL VIDEO PREVIEW
-   ========================================================= */
+VIDEO CALL
+========================================================= */
 
-.fullscreen-call .local-video {
-  position: absolute;
-
-  top: 24px;
-  right: 24px;
-
-  width: 180px;
-  height: 125px;
-
-  object-fit: cover;
-
-  background: #222;
-
-  border: 2px solid rgba(255, 255, 255, 0.9);
-
-  border-radius: 12px;
-
-  z-index: 10;
-
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.45);
+.video-call-screen {
+background: #020617;
 }
 
+.remote-video {
+position: absolute;
+inset: 0;
+width: 100%;
+height: 100%;
+display: block;
+object-fit: cover;
+background: #020617;
+}
+
+.remote-video-placeholder {
+position: absolute;
+inset: 0;
+z-index: 1;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+text-align: center;
+background:
+radial-gradient(
+circle at center,
+#1e293b 0%,
+#0f172a 45%,
+#020617 100%
+);
+color: #ffffff;
+}
+
+.remote-placeholder-avatar {
+width: 105px;
+height: 105px;
+margin-bottom: 18px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+background: #334155;
+color: #ffffff;
+font-size: 40px;
+font-weight: 700;
+}
+
+.remote-video-placeholder h2 {
+margin: 0;
+font-size: 24px;
+}
+
+.remote-video-placeholder p {
+margin: 8px 0 0;
+color: #94a3b8;
+font-size: 14px;
+}
 
 /* =========================================================
-   CALL TOP INFO
-   ========================================================= */
+REMOTE USER INFO
+========================================================= */
 
-.fullscreen-call .active-call-info {
-  position: absolute;
-
-  top: 24px;
-  left: 24px;
-
-  z-index: 10;
-
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  padding: 9px 14px;
-
-  background: rgba(0, 0, 0, 0.45);
-
-  color: #fff;
-
-  border-radius: 10px;
-
-  backdrop-filter: blur(8px);
+.remote-user-info {
+position: absolute;
+top: 24px;
+left: 24px;
+z-index: 20;
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 9px 13px 9px 9px;
+border: 1px solid rgba(255, 255, 255, 0.10);
+border-radius: 14px;
+background: rgba(15, 23, 42, 0.58);
+color: #ffffff;
+backdrop-filter: blur(12px);
+-webkit-backdrop-filter: blur(12px);
+box-shadow: 0 8px 25px rgba(0, 0, 0, 0.16);
 }
 
-.fullscreen-call .active-call-status {
-  color: #fff;
-
-  font-size: 14px;
-  font-weight: 500;
+.remote-user-avatar {
+width: 38px;
+height: 38px;
+display: flex;
+align-items: center;
+justify-content: center;
+border-radius: 50%;
+background: #334155;
+color: #ffffff;
+font-size: 15px;
+font-weight: 700;
 }
 
+.remote-user-info strong,
+.remote-user-info span {
+display: block;
+}
+
+.remote-user-info strong {
+font-size: 13px;
+font-weight: 650;
+}
+
+.remote-user-info span {
+margin-top: 2px;
+color: #cbd5e1;
+font-size: 11px;
+}
 
 /* =========================================================
-   BOTTOM CALL CONTROLS
-   ========================================================= */
+LOCAL VIDEO
+========================================================= */
 
-.fullscreen-call .call-controls {
-  position: absolute;
-
-  left: 0;
-  right: 0;
-  bottom: 0;
-
-  z-index: 20;
-
-  display: flex;
-
-  align-items: center;
-  justify-content: center;
-
-  gap: 16px;
-
-  padding: 24px 20px 30px;
-
-  background:
-    linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.8),
-      rgba(0, 0, 0, 0)
-    );
-
-  pointer-events: none;
+.local-video-wrapper {
+position: absolute;
+right: 24px;
+top: 24px;
+z-index: 30;
+width: 190px;
+height: 125px;
+overflow: hidden;
+border: 2px solid rgba(255, 255, 255, 0.45);
+border-radius: 16px;
+background: #111827;
+box-shadow:
+0 12px 30px rgba(0, 0, 0, 0.35),
+0 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
-.fullscreen-call .call-controls > * {
-  pointer-events: auto;
+.local-video {
+width: 100%;
+height: 100%;
+display: block;
+object-fit: cover;
+background: #111827;
 }
 
+.local-video-label {
+position: absolute;
+left: 8px;
+bottom: 7px;
+padding: 4px 8px;
+border-radius: 6px;
+background: rgba(0, 0, 0, 0.55);
+color: #ffffff;
+font-size: 10px;
+font-weight: 600;
+}
 
 /* =========================================================
-   CALL CONTROL BUTTON
-   ========================================================= */
+MODERN CALL CONTROLS
+========================================================= */
 
-.fullscreen-call .call-control-btn {
-  width: 58px;
-  height: 58px;
+.modern-call-controls {
+position: absolute;
+left: 50%;
+bottom: 34px;
+z-index: 100;
+transform: translateX(-50%);
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+min-height: 86px;
+padding: 12px 16px;
 
-  border: none;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 12px;
 
-  border-radius: 50%;
+border: 1px solid rgba(255, 255, 255, 0.10);
+border-radius: 24px;
 
-  background: rgba(255, 255, 255, 0.18);
+background: rgba(15, 23, 42, 0.72);
 
-  color: #fff;
+backdrop-filter: blur(18px);
+-webkit-backdrop-filter: blur(18px);
 
-  cursor: pointer;
-
-  font-size: 20px;
-
-  backdrop-filter: blur(8px);
-
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease;
+box-shadow:
+0 18px 45px rgba(0, 0, 0, 0.35),
+inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-
-.fullscreen-call .call-control-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-
-  transform: scale(1.05);
-}
-
-.fullscreen-call .call-control-btn:active {
-  transform: scale(0.95);
-}
-
 
 /* =========================================================
-   MICROPHONE OFF
-   ========================================================= */
+NORMAL CALL CONTROL
+========================================================= */
 
-.fullscreen-call .call-control-btn.muted {
-  background: #dc3545;
+.modern-call-controls .call-control-button {
+position: relative;
+
+width: 62px;
+height: 62px;
+padding: 0;
+
+display: inline-flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 4px;
+
+border: 1px solid rgba(255, 255, 255, 0.08);
+border-radius: 50%;
+
+background: rgba(255, 255, 255, 0.11);
+color: #ffffff;
+
+cursor: pointer;
+
+transition:
+background 0.2s ease,
+transform 0.2s ease,
+box-shadow 0.2s ease,
+color 0.2s ease;
 }
 
+.modern-call-controls .call-control-button:hover {
+background: rgba(255, 255, 255, 0.18);
+transform: translateY(-2px);
+box-shadow: 0 8px 20px rgba(0, 0, 0, 0.20);
+}
+
+.modern-call-controls .call-control-button:active {
+transform: translateY(0) scale(0.96);
+}
 
 /* =========================================================
-   CAMERA OFF
-   ========================================================= */
+CONTROL ICON
+========================================================= */
 
-.fullscreen-call .call-control-btn.camera-off {
-  background: #dc3545;
+.control-icon {
+width: 22px;
+height: 22px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
 }
 
+.control-icon svg {
+width: 22px;
+height: 22px;
+fill: none;
+stroke: currentColor;
+stroke-width: 1.8;
+stroke-linecap: round;
+stroke-linejoin: round;
+}
+
+.control-label {
+position: absolute;
+top: calc(100% + 8px);
+
+padding: 4px 7px;
+
+white-space: nowrap;
+
+border-radius: 6px;
+
+background: rgba(2, 6, 23, 0.82);
+color: #e2e8f0;
+
+font-size: 9px;
+font-weight: 500;
+
+opacity: 0;
+pointer-events: none;
+
+transform: translateY(-3px);
+transition:
+opacity 0.18s ease,
+transform 0.18s ease;
+}
+
+.modern-call-controls
+.call-control-button:hover
+.control-label {
+opacity: 1;
+transform: translateY(0);
+}
 
 /* =========================================================
-   END CALL
-   ========================================================= */
+MUTE ACTIVE STATE
+========================================================= */
 
-.fullscreen-call .end-call-btn {
-  width: 64px;
-  height: 64px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border: none;
-
-  border-radius: 50%;
-
-  background: #dc3545;
-
-  color: #fff;
-
-  cursor: pointer;
-
-  font-size: 22px;
-
-  box-shadow:
-    0 5px 20px rgba(220, 53, 69, 0.45);
-
-  transition:
-    background 0.2s ease,
-    transform 0.2s ease;
+.modern-call-controls
+.call-control-button.mute-control.active-control {
+background: #ef4444;
+border-color: #ef4444;
+color: #ffffff;
+box-shadow:
+0 7px 20px rgba(239, 68, 68, 0.28);
 }
 
-.fullscreen-call .end-call-btn:hover {
-  background: #bb2d3b;
-
-  transform: scale(1.06);
+.modern-call-controls
+.call-control-button.mute-control.active-control:hover {
+background: #dc2626;
 }
-
-.fullscreen-call .end-call-btn:active {
-  transform: scale(0.95);
-}
-
 
 /* =========================================================
-   VOICE CALL
-   ========================================================= */
+CAMERA OFF STATE
+========================================================= */
 
-.fullscreen-call.voice-call {
-  background: #111827;
+.modern-call-controls
+.call-control-button.camera-control.active-control {
+background: #ef4444;
+border-color: #ef4444;
+color: #ffffff;
+box-shadow:
+0 7px 20px rgba(239, 68, 68, 0.28);
 }
 
-
-/*
- * For voice calls there is no remote video.
- * Keep a clean dark background.
- */
-
-.fullscreen-call.voice-call .remote-video,
-.fullscreen-call.voice-call .local-video {
-  display: none;
+.modern-call-controls
+.call-control-button.camera-control.active-control:hover {
+background: #dc2626;
 }
-
 
 /* =========================================================
-   VOICE CALL AVATAR / CONTENT
-   ========================================================= */
+DISCONNECT BUTTON
+========================================================= */
 
-.fullscreen-call .voice-call-content {
-  position: absolute;
+.modern-call-controls .disconnect-button {
+width: 70px;
+height: 62px;
+padding: 0;
 
-  inset: 0;
+display: inline-flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 4px;
 
-  z-index: 5;
+border: 0;
+border-radius: 50%;
 
-  display: flex;
+background: #ef4444;
+color: #ffffff;
 
-  flex-direction: column;
+cursor: pointer;
 
-  align-items: center;
-  justify-content: center;
+box-shadow:
+0 8px 22px rgba(239, 68, 68, 0.28);
 
-  color: #fff;
-
-  text-align: center;
+transition:
+background 0.2s ease,
+transform 0.2s ease,
+box-shadow 0.2s ease;
 }
 
-.fullscreen-call .voice-call-avatar {
-  width: 120px;
-  height: 120px;
-
-  display: flex;
-
-  align-items: center;
-  justify-content: center;
-
-  margin-bottom: 20px;
-
-  border-radius: 50%;
-
-  background: #374151;
-
-  color: #fff;
-
-  font-size: 42px;
-  font-weight: 600;
+.modern-call-controls .disconnect-button:hover {
+background: #dc2626;
+transform: translateY(-2px);
+box-shadow:
+0 11px 28px rgba(239, 68, 68, 0.38);
 }
 
+.modern-call-controls .disconnect-button:active {
+transform: scale(0.95);
+}
+
+.modern-call-controls .disconnect-button .control-icon {
+transform: rotate(135deg);
+}
+
+.modern-call-controls .disconnect-button .control-label {
+display: none;
+}
 
 /* =========================================================
-   MOBILE VIDEO CALL
-   ========================================================= */
+ACCESSIBILITY / FOCUS
+========================================================= */
 
-@media (max-width: 768px) {
-
-  .fullscreen-call .local-video {
-    top: 16px;
-    right: 16px;
-
-    width: 110px;
-    height: 155px;
-
-    border-radius: 10px;
-  }
-
-
-  .fullscreen-call .active-call-info {
-    top: 16px;
-    left: 16px;
-
-    padding: 7px 10px;
-  }
-
-
-  .fullscreen-call .call-controls {
-    gap: 12px;
-
-    padding:
-      20px
-      16px
-      calc(20px + env(safe-area-inset-bottom));
-  }
-
-
-  .fullscreen-call .call-control-btn {
-    width: 52px;
-    height: 52px;
-
-    font-size: 18px;
-  }
-
-
-  .fullscreen-call .end-call-btn {
-    width: 58px;
-    height: 58px;
-
-    font-size: 20px;
-  }
+button:focus-visible,
+input:focus-visible {
+outline: 2px solid #60a5fa;
+outline-offset: 2px;
 }
-
 
 /* =========================================================
-   VERY SMALL MOBILE
-   ========================================================= */
+MOBILE
+========================================================= */
 
-@media (max-width: 400px) {
+@media (max-width: 900px) {
 
-  .fullscreen-call .local-video {
-    width: 90px;
-    height: 125px;
-  }
-
-
-  .fullscreen-call .call-controls {
-    gap: 9px;
-  }
-
-
-  .fullscreen-call .call-control-btn {
-    width: 48px;
-    height: 48px;
-  }
-
-
-  .fullscreen-call .end-call-btn {
-    width: 54px;
-    height: 54px;
-  }
+.chat-sidebar {
+width: 290px;
+min-width: 260px;
 }
 
-
-
-/* =========================================================
-   TABLET
-   ========================================================= */
-
-@media (max-width: 992px) {
-
-  .chat-sidebar {
-    width: 250px;
-    flex-basis: 250px;
-  }
-
-  .message-bubble {
-    max-width: 75%;
-  }
+.message-bubble {
+max-width: 80%;
 }
 
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
-
-@media (max-width: 768px) {
-
-  .conversation-list,
-  .message-stream {
-    overflow-y: auto;
-    overflow-x: hidden;
-
-    -webkit-overflow-scrolling: touch;
-
-    /* Allow normal vertical touch scrolling */
-    touch-action: pan-y;
-
-    /* Don't trap the swipe when reaching the edge */
-    overscroll-behavior-y: auto;
-  }
-
-  .chat-container,
-  .chat-sidebar,
-  .chat-window {
-    touch-action: pan-y;
-  }
+.local-video-wrapper {
+width: 150px;
+height: 105px;
 }
 
-
-
-/* =========================================================
-   SMALL MOBILE
-   ========================================================= */
-
-@media (max-width: 576px) {
-
-  .chat-sidebar {
-    flex-basis: 160px;
-
-    height: 160px;
-    min-height: 160px;
-  }
-
-  .sidebar-header {
-    flex-basis: 50px;
-
-    height: 50px;
-    min-height: 50px;
-  }
-
-  .sidebar-header h2 {
-    font-size: 1rem;
-  }
-
-  .new-chat-btn {
-    padding: 0.35rem 0.6rem;
-
-    font-size: 0.8rem;
-  }
-
-  .avatar {
-    flex-basis: 42px;
-
-    width: 42px;
-    height: 42px;
-
-    font-size: 0.85rem;
-  }
-
-  .avatar-status {
-    width: 17px;
-    height: 17px;
-  }
-
-  .message-stream {
-    padding: 0.5rem;
-  }
-
-  .message-bubble {
-    max-width: 85%;
-
-    font-size: 0.9rem;
-  }
-
-  .chat-input-area {
-    padding: 0.5rem;
-  }
-
-  .input-form input {
-    padding: 0.55rem;
-  }
-
-  .send-btn {
-    padding: 0.55rem 0.75rem;
-  }
-
-  .video-call-area {
-    min-height: 150px;
-    max-height: 190px;
-
-    padding: 0.5rem;
-  }
-
-  .remote-video {
-    height: 150px;
-  }
-
-  .local-video {
-    width: 90px;
-    height: 65px;
-
-    right: 8px;
-    bottom: 8px;
-  }
 }
 
+@media (max-width: 700px) {
 
-/* =========================================================
-   FINAL FLEX SAFETY
-   ========================================================= */
-
-/*
- * Angular structural elements should not create
- * an extra scrollable page.
- */
-
-.chat-container > *,
-.chat-window > *,
-.chat-sidebar > * {
-  min-width: 0;
-  min-height: 0;
+.chat-container {
+height: 100dvh;
 }
 
+.chat-sidebar {
+width: 250px;
+min-width: 220px;
+}
 
-/*
- * These are the ONLY normal scroll containers.
- */
+.sidebar-header {
+padding: 15px;
+}
 
-.conversation-list,
+.sidebar-header h2 {
+font-size: 17px;
+}
+
+.new-chat-btn {
+padding: 8px 10px;
+font-size: 11px;
+}
+
+.chat-header {
+min-height: 68px;
+padding: 11px 14px;
+}
+
+.call-icon-button {
+width: 38px;
+height: 38px;
+}
+
+.call-icon-button svg {
+width: 18px;
+height: 18px;
+}
+
 .message-stream {
-  overflow-y: auto;
-  overflow-x: hidden;
+padding: 16px 12px;
 }
 
+.message-bubble {
+max-width: 86%;
+}
 
-/*
- * Everything around them stays fixed.
- */
+.chat-input-area {
+padding: 10px;
+}
 
-.chat-container,
-.chat-sidebar,
-.chat-window {
-  overflow: hidden;
+.input-form input {
+height: 42px;
+}
+
+.send-btn {
+height: 42px;
+padding: 0 15px;
+}
+
+.remote-user-info {
+top: 14px;
+left: 14px;
+}
+
+.local-video-wrapper {
+top: 14px;
+right: 14px;
+width: 125px;
+height: 90px;
+border-radius: 12px;
+}
+
+.modern-call-controls {
+bottom: 22px;
+min-height: 76px;
+padding: 9px 12px;
+gap: 9px;
+border-radius: 21px;
+}
+
+.modern-call-controls .call-control-button {
+width: 54px;
+height: 54px;
+}
+
+.modern-call-controls .disconnect-button {
+width: 62px;
+height: 54px;
+}
+
+.control-icon,
+.control-icon svg {
+width: 20px;
+height: 20px;
+}
+
+.voice-call-avatar {
+width: 105px;
+height: 105px;
+font-size: 40px;
+}
+
+.voice-call-content h2 {
+font-size: 22px;
+}
+
+}
+
+@media (max-width: 520px) {
+
+.chat-sidebar {
+width: 205px;
+min-width: 205px;
+}
+
+.sidebar-header {
+padding: 12px 10px;
+}
+
+.sidebar-header h2 {
+font-size: 15px;
+}
+
+.new-chat-btn {
+font-size: 0;
+width: 34px;
+height: 34px;
+padding: 0;
+border-radius: 50%;
+}
+
+.new-chat-btn::before {
+content: "+";
+font-size: 20px;
+}
+
+.conversation-item {
+min-height: 62px;
+padding: 8px;
+gap: 8px;
+}
+
+.avatar {
+width: 39px;
+height: 39px;
+min-width: 39px;
+font-size: 14px;
+}
+
+.avatar-status {
+width: 10px;
+height: 10px;
+}
+
+.conversation-top .user-name {
+font-size: 12px;
+}
+
+.last-message {
+font-size: 10px;
+}
+
+.chat-header {
+gap: 8px;
+}
+
+.user-status h3 {
+font-size: 13px;
+}
+
+.status-indicator {
+font-size: 9px;
+}
+
+.call-actions {
+gap: 5px;
+}
+
+.call-icon-button {
+width: 34px;
+height: 34px;
+}
+
+.call-icon-button svg {
+width: 16px;
+height: 16px;
+}
+
+.message-bubble {
+max-width: 90%;
+padding: 9px 11px 6px;
+}
+
+.message-content {
+font-size: 13px;
+}
+
+.input-form {
+gap: 6px;
+}
+
+.send-btn {
+padding: 0 12px;
+font-size: 12px;
+}
+
+.local-video-wrapper {
+width: 105px;
+height: 76px;
+}
+
+.remote-user-info {
+max-width: calc(100% - 135px);
+}
+
+.remote-user-info strong {
+max-width: 110px;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+
+.modern-call-controls {
+width: auto;
+max-width: calc(100% - 20px);
+bottom: 15px;
+padding: 8px 10px;
+gap: 7px;
+border-radius: 19px;
+}
+
+.modern-call-controls .call-control-button {
+width: 49px;
+height: 49px;
+}
+
+.modern-call-controls .disconnect-button {
+width: 56px;
+height: 49px;
+}
+
+.control-icon,
+.control-icon svg {
+width: 18px;
+height: 18px;
+}
+
+.modern-call-controls .control-label {
+display: none;
+}
+
+.voice-call-content {
+padding-bottom: 70px;
+}
+
+.voice-call-avatar {
+width: 90px;
+height: 90px;
+font-size: 34px;
+}
+
+.voice-call-content h2 {
+font-size: 20px;
+}
+
+.incoming-call-card {
+padding: 27px 20px 21px;
+}
+
+.incoming-call-actions {
+gap: 8px;
+}
+
+.accept-call-button,
+.reject-call-button {
+min-width: 105px;
+}
+
 }
