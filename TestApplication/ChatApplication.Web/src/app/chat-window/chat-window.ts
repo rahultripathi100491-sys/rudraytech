@@ -53,11 +53,6 @@ export type MessageStatus =
   | 'delivered'
   | 'read';
 
-
-// =========================================================
-// RAW MESSAGE STATUS
-// =========================================================
-
 type RawMessageStatus =
   | string
   | number
@@ -183,11 +178,12 @@ export class ChatWindowComponent
 
   public incomingCallName = '';
 
-  public incomingCallType: CallType = 'video';
+  public incomingCallType: CallType | null = null;
 
   public activeCallType: CallType | null = null;
 
   public callType: CallType | null = null;
+
 
   public isCallActive$: Observable<boolean> =
     this.callService.isCallActive$;
@@ -203,6 +199,229 @@ export class ChatWindowComponent
   public isMicrophoneMuted = false;
 
   public isCameraOff = false;
+
+
+  // =========================================================
+  // CALLING / RINGING DURATION
+  // =========================================================
+
+  public callingDurationSeconds = 0;
+
+  private callingDurationTimer:
+    ReturnType<typeof setInterval> | null = null;
+
+
+  /**
+   * Main formatted calling duration.
+   *
+   * Example:
+   * 00:01
+   * 00:02
+   * 01:05
+   */
+  public get callingDurationText(): string {
+
+    const totalSeconds =
+      this.callingDurationSeconds;
+
+    const minutes =
+      Math.floor(
+        totalSeconds / 60
+      );
+
+    const seconds =
+      totalSeconds % 60;
+
+    return (
+      `${this.padTime(minutes)}:` +
+      `${this.padTime(seconds)}`
+    );
+
+  }
+
+
+  /**
+   * Compatibility getter for chat-window.html.
+   *
+   * Your HTML currently references:
+   *
+   * {{ callDuration }}
+   *
+   * This getter prevents:
+   *
+   * TS2339: Property 'callDuration' does not exist
+   *
+   * while keeping callingDurationText as the
+   * main formatted duration property.
+   */
+  public get callDuration(): string {
+
+    return this.callingDurationText;
+
+  }
+
+
+  private padTime(
+    value: number
+  ): string {
+
+    return String(value)
+      .padStart(2, '0');
+
+  }
+
+
+  private startCallingDuration(): void {
+
+    this.stopCallingDuration();
+
+    this.callingDurationSeconds =
+      0;
+
+    this.callingDurationTimer =
+      setInterval(() => {
+
+        if (this.isDestroyed) {
+
+          this.stopCallingDuration();
+
+          return;
+
+        }
+
+        this.callingDurationSeconds++;
+
+      }, 1000);
+
+  }
+
+
+  private stopCallingDuration(): void {
+
+    if (
+      this.callingDurationTimer !==
+      null
+    ) {
+
+      clearInterval(
+        this.callingDurationTimer
+      );
+
+      this.callingDurationTimer =
+        null;
+
+    }
+
+  }
+
+
+  private resetCallingDuration(): void {
+
+    this.stopCallingDuration();
+
+    this.callingDurationSeconds =
+      0;
+
+  }
+
+
+  // =========================================================
+  // CALL TYPE HELPERS
+  // =========================================================
+
+  public isVideoCall(): boolean {
+
+    return this.activeCallType === 'video';
+
+  }
+
+
+  public isVoiceCall(): boolean {
+
+    return this.activeCallType === 'voice';
+
+  }
+
+
+  public isIncomingVideoCall(): boolean {
+
+    return (
+      this.incomingCallUserId !== null &&
+      this.incomingCallType === 'video'
+    );
+
+  }
+
+
+  public isIncomingVoiceCall(): boolean {
+
+    return (
+      this.incomingCallUserId !== null &&
+      this.incomingCallType === 'voice'
+    );
+
+  }
+
+
+  // =========================================================
+  // OUTGOING CALL SCREEN
+  // =========================================================
+
+  public showOutgoingCallScreen = false;
+
+  public isOutgoingCall = false;
+
+  private outgoingCallPending = false;
+
+  public outgoingCallName = '';
+
+  public callerCallStatus = '';
+
+  private outgoingCallTargetUserId: string | null = null;
+
+
+  // =========================================================
+  // CALL DISPLAY NAME
+  // =========================================================
+
+  public get callDisplayName(): string {
+
+    if (this.incomingCallUserId) {
+
+      return (
+        this.incomingCallName ||
+        this.resolveUserName(
+          this.incomingCallUserId
+        ) ||
+        'Caller'
+      );
+
+    }
+
+
+    if (this.outgoingCallName) {
+
+      return this.outgoingCallName;
+
+    }
+
+
+    if (this.activeTargetUserId) {
+
+      return (
+        this.activeTargetName ||
+        this.resolveUserName(
+          this.activeTargetUserId
+        ) ||
+        'User'
+      );
+
+    }
+
+
+    return 'User';
+
+  }
 
 
   // =========================================================
@@ -268,14 +487,9 @@ export class ChatWindowComponent
 
   private readonly scrollThreshold = 80;
 
-  /*
-   * Prevent requesting the same page twice.
-   */
-  private requestedPages = new Set<number>();
+  private requestedPages =
+    new Set<number>();
 
-  /*
-   * Page currently being requested.
-   */
   private loadingPageNumber: number | null = null;
 
 
@@ -309,10 +523,6 @@ export class ChatWindowComponent
 
   async ngOnInit(): Promise<void> {
 
-    // -------------------------------------------------------
-    // SIGNALR
-    // -------------------------------------------------------
-
     try {
 
       await this.signalRService.startConnection();
@@ -326,10 +536,6 @@ export class ChatWindowComponent
 
     }
 
-
-    // -------------------------------------------------------
-    // CHAT SIGNALR
-    // -------------------------------------------------------
 
     try {
 
@@ -345,16 +551,12 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // USERS
-    // -------------------------------------------------------
-
     await this.loadUsers();
 
 
-    // -------------------------------------------------------
-    // ACTIVE MESSAGES
-    // -------------------------------------------------------
+    // =======================================================
+    // ACTIVE CHAT MESSAGES
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -366,20 +568,14 @@ export class ChatWindowComponent
               return;
             }
 
-            /*
-             * When a conversation is opened or a message is sent,
-             * scroll to bottom.
-             */
+
             if (this.initialScrollPending) {
 
               this.scheduleInitialBottomScroll();
 
             }
 
-            /*
-             * Do not scroll to bottom when older messages are
-             * being loaded.
-             */
+
             if (
               !this.restoringScrollPosition &&
               this.isNearBottom()
@@ -389,18 +585,22 @@ export class ChatWindowComponent
 
             }
 
+
             setTimeout(() => {
 
               if (this.isDestroyed) {
                 return;
               }
 
+
               const statusMessages =
                 messages as unknown as MessageWithStatus[];
+
 
               void this.markIncomingMessagesAsDelivered(
                 statusMessages
               );
+
 
               void this.markActiveConversationAsRead();
 
@@ -412,9 +612,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // USER OFFLINE
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -433,16 +633,16 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // MESSAGE STATUS
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscribeToMessageStatusChanged();
 
 
-    // -------------------------------------------------------
-    // INCOMING CALL
-    // -------------------------------------------------------
+    // =======================================================
+    // INCOMING CALL USER
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -450,14 +650,62 @@ export class ChatWindowComponent
         .subscribe(
           (userId: string | null) => {
 
-            this.incomingCallUserId = userId;
+            console.log(
+              '[ChatWindow] Incoming call user:',
+              userId
+            );
 
-            if (userId) {
 
-              this.callStatus =
-                'Incoming call...';
+            this.incomingCallUserId =
+              userId;
+
+
+            if (!userId) {
+
+              this.incomingCallName = '';
+
+              this.incomingCallType = null;
+
+              return;
 
             }
+
+
+            this.showOutgoingCallScreen =
+              false;
+
+            this.isOutgoingCall =
+              false;
+
+            this.outgoingCallName =
+              '';
+
+            this.outgoingCallTargetUserId =
+              null;
+
+            this.outgoingCallPending =
+              false;
+
+
+            this.callStatus =
+              'Incoming call...';
+
+
+            if (this.incomingCallType) {
+
+              this.activeCallType =
+                this.incomingCallType;
+
+              this.callType =
+                this.incomingCallType;
+
+            }
+
+
+            console.log(
+              '[ChatWindow] Incoming call type currently:',
+              this.incomingCallType
+            );
 
           }
         )
@@ -465,9 +713,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // INCOMING CALL NAME
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -475,8 +723,12 @@ export class ChatWindowComponent
         .subscribe(
           (name: string) => {
 
+            const cleanName =
+              (name || '').trim();
+
+
             this.incomingCallName =
-              name || 'Unknown user';
+              cleanName || 'Caller';
 
           }
         )
@@ -484,9 +736,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // INCOMING CALL TYPE
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -494,19 +746,51 @@ export class ChatWindowComponent
         .subscribe(
           (type: CallType | null) => {
 
+            console.log(
+              '[ChatWindow] Incoming call type received:',
+              type
+            );
+
+
             if (!type) {
               return;
             }
 
-            this.incomingCallType = type;
+
+            this.incomingCallType =
+              type;
+
 
             if (this.incomingCallUserId) {
 
-              this.activeCallType = type;
+              this.activeCallType =
+                type;
 
-              this.callType = type;
+              this.callType =
+                type;
+
+
+              this.callStatus =
+                type === 'voice'
+                  ? 'Incoming voice call...'
+                  : 'Incoming video call...';
 
             }
+
+
+            console.log(
+              '[ChatWindow] Call type state:',
+              {
+                incomingCallType:
+                  this.incomingCallType,
+
+                activeCallType:
+                  this.activeCallType,
+
+                callType:
+                  this.callType
+              }
+            );
 
           }
         )
@@ -514,9 +798,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // LOCAL STREAM
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -524,11 +808,33 @@ export class ChatWindowComponent
         .subscribe(
           (stream: MediaStream | null) => {
 
-            this.localStream = stream;
+            console.log(
+              '[ChatWindow] Local stream:',
+              stream
+            );
+
+
+            this.localStream =
+              stream;
+
 
             if (!stream) {
-              this.lastLocalStream = null;
+
+              this.lastLocalStream =
+                null;
+
             }
+
+
+            if (
+              this.activeCallType ===
+              'voice'
+            ) {
+
+              this.clearVideoElements();
+
+            }
+
 
             this.scheduleMediaAttach();
 
@@ -538,9 +844,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // REMOTE STREAM
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -548,11 +854,33 @@ export class ChatWindowComponent
         .subscribe(
           (stream: MediaStream | null) => {
 
-            this.remoteStream = stream;
+            console.log(
+              '[ChatWindow] Remote stream:',
+              stream
+            );
+
+
+            this.remoteStream =
+              stream;
+
 
             if (!stream) {
-              this.lastRemoteStream = null;
+
+              this.lastRemoteStream =
+                null;
+
             }
+
+
+            if (
+              this.activeCallType ===
+              'voice'
+            ) {
+
+              this.clearVideoElements();
+
+            }
+
 
             this.scheduleMediaAttach();
 
@@ -562,9 +890,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL ACTIVE
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -572,16 +900,94 @@ export class ChatWindowComponent
         .subscribe(
           (isActive: boolean) => {
 
+            if (this.isDestroyed) {
+              return;
+            }
+
+
             if (!isActive) {
               return;
             }
 
-            if (!this.callStatus) {
 
-              this.callStatus =
-                'Call connected';
+            this.stopCallingDuration();
+
+
+            if (!this.activeCallType) {
+
+              this.activeCallType =
+                this.callType ||
+                this.incomingCallType ||
+                null;
 
             }
+
+
+            if (!this.callType) {
+
+              this.callType =
+                this.activeCallType;
+
+            }
+
+
+            console.log(
+              '[ChatWindow] Active call:',
+              {
+                activeCallType:
+                  this.activeCallType,
+
+                callType:
+                  this.callType,
+
+                incomingCallType:
+                  this.incomingCallType
+              }
+            );
+
+
+            if (
+              this.activeCallType ===
+              'voice'
+            ) {
+
+              this.callStatus =
+                'Voice call connected';
+
+              this.isCameraOff =
+                true;
+
+              this.clearVideoElements();
+
+            }
+
+
+            else if (
+              this.activeCallType ===
+              'video'
+            ) {
+
+              this.callStatus =
+                'Video call connected';
+
+              this.isCameraOff =
+                false;
+
+            }
+
+
+            else {
+
+              console.warn(
+                '[ChatWindow] Call became active but call type is unknown.'
+              );
+
+            }
+
+
+            this.callerCallStatus =
+              'Connected';
+
 
             this.scheduleMediaAttach();
 
@@ -591,9 +997,9 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL ACCEPTED
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
@@ -605,16 +1011,68 @@ export class ChatWindowComponent
               return;
             }
 
-            this.activeTargetUserId = userId;
 
-            this.incomingCallUserId = null;
+            this.stopCallingDuration();
 
-            this.incomingCallName = '';
 
-            this.callStatus =
-              this.activeCallType === 'voice'
-                ? 'Voice call connecting...'
-                : 'Video call connecting...';
+            this.activeTargetUserId =
+              userId;
+
+
+            const resolvedName =
+              this.resolveUserName(userId);
+
+
+            if (resolvedName) {
+
+              this.activeTargetName =
+                resolvedName;
+
+            }
+
+
+            this.closeOutgoingCallScreen();
+
+
+            this.incomingCallUserId =
+              null;
+
+            this.incomingCallName =
+              '';
+
+
+            this.callerCallStatus =
+              'Connected';
+
+
+            if (
+              this.activeCallType ===
+              'voice'
+            ) {
+
+              this.callStatus =
+                'Voice call connected';
+
+              this.isCameraOff =
+                true;
+
+              this.clearVideoElements();
+
+            }
+
+            else if (
+              this.activeCallType ===
+              'video'
+            ) {
+
+              this.callStatus =
+                'Video call connected';
+
+              this.isCameraOff =
+                false;
+
+            }
+
 
             this.scheduleMediaAttach();
 
@@ -624,62 +1082,361 @@ export class ChatWindowComponent
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL REJECTED
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
       this.callService.callRejected$
         .subscribe(() => {
 
+          this.stopCallingDuration();
+
+
+          this.closeOutgoingCallScreen();
+
+
           this.callStatus =
             'Call declined';
 
+          this.callerCallStatus =
+            'Call declined';
+
+
           this.stopMedia();
 
-          this.incomingCallUserId = null;
 
-          this.incomingCallName = '';
-
-          this.activeCallType = null;
-
-          this.callType = null;
-
-          this.isStartingCall = false;
+          this.resetCallState();
 
         })
 
     );
 
 
-    // -------------------------------------------------------
+    // =======================================================
     // CALL ENDED
-    // -------------------------------------------------------
+    // =======================================================
 
     this.subscriptions.add(
 
       this.callService.callEnded$
         .subscribe(() => {
 
+          this.stopCallingDuration();
+
+
+          this.closeOutgoingCallScreen();
+
+
           this.callStatus =
             'Call ended';
 
+          this.callerCallStatus =
+            'Call ended';
+
+
           this.stopMedia();
 
-          this.incomingCallUserId = null;
 
-          this.incomingCallName = '';
-
-          this.activeCallType = null;
-
-          this.callType = null;
-
-          this.isStartingCall = false;
+          this.resetCallState();
 
         })
 
     );
+
+  }
+
+
+  // =========================================================
+  // RESET CALL STATE
+  // =========================================================
+
+  private resetCallState(): void {
+
+    this.resetCallingDuration();
+
+
+    this.incomingCallUserId =
+      null;
+
+    this.incomingCallName =
+      '';
+
+    this.incomingCallType =
+      null;
+
+    this.activeCallType =
+      null;
+
+    this.callType =
+      null;
+
+    this.isStartingCall =
+      false;
+
+    this.isMicrophoneMuted =
+      false;
+
+    this.isCameraOff =
+      false;
+
+  }
+
+
+  // =========================================================
+  // CLOSE OUTGOING CALL SCREEN
+  // =========================================================
+
+  private closeOutgoingCallScreen(): void {
+
+    this.showOutgoingCallScreen =
+      false;
+
+    this.isOutgoingCall =
+      false;
+
+    this.outgoingCallPending =
+      false;
+
+    this.outgoingCallTargetUserId =
+      null;
+
+    this.isStartingCall =
+      false;
+
+  }
+
+
+  // =========================================================
+  // RESOLVE USER NAME
+  // =========================================================
+
+  private resolveUserName(
+    userId: string | null | undefined
+  ): string {
+
+    if (!userId) {
+      return '';
+    }
+
+
+    const normalizedId =
+      String(userId)
+        .trim()
+        .toLowerCase();
+
+
+    if (!normalizedId) {
+      return '';
+    }
+
+
+    const user =
+      this.users.find(
+        (item: User) => {
+
+          if (!item?.id) {
+            return false;
+          }
+
+
+          return (
+            String(item.id)
+              .trim()
+              .toLowerCase() ===
+            normalizedId
+          );
+
+        }
+      );
+
+
+    if (user) {
+
+      const candidate =
+        user as User & {
+          name?: string;
+          fullName?: string;
+          userName?: string;
+          username?: string;
+          displayName?: string;
+          firstName?: string;
+          lastName?: string;
+        };
+
+
+      const fullName =
+        [
+          candidate.firstName,
+          candidate.lastName
+        ]
+          .filter(
+            (value: string | undefined) =>
+              !!value?.trim()
+          )
+          .join(' ')
+          .trim();
+
+
+      if (fullName) {
+        return fullName;
+      }
+
+
+      const name =
+        candidate.name?.trim();
+
+      if (name) {
+        return name;
+      }
+
+
+      const displayName =
+        candidate.displayName?.trim();
+
+      if (displayName) {
+        return displayName;
+      }
+
+
+      const fullNameProperty =
+        candidate.fullName?.trim();
+
+      if (fullNameProperty) {
+        return fullNameProperty;
+      }
+
+
+      const userName =
+        candidate.userName?.trim();
+
+      if (userName) {
+        return userName;
+      }
+
+
+      const username =
+        candidate.username?.trim();
+
+      if (username) {
+        return username;
+      }
+
+    }
+
+
+    const searchUser =
+      this.searchResults.find(
+        (item: UserSearchResult) => {
+
+          if (!item?.id) {
+            return false;
+          }
+
+
+          return (
+            String(item.id)
+              .trim()
+              .toLowerCase() ===
+            normalizedId
+          );
+
+        }
+      );
+
+
+    if (searchUser) {
+
+      const candidate =
+        searchUser as UserSearchResult & {
+          name?: string;
+          fullName?: string;
+          displayName?: string;
+          userName?: string;
+          username?: string;
+        };
+
+
+      const name =
+        candidate.name?.trim();
+
+      if (name) {
+        return name;
+      }
+
+
+      const displayName =
+        candidate.displayName?.trim();
+
+      if (displayName) {
+        return displayName;
+      }
+
+
+      const fullName =
+        candidate.fullName?.trim();
+
+      if (fullName) {
+        return fullName;
+      }
+
+
+      const userName =
+        candidate.userName?.trim();
+
+      if (userName) {
+        return userName;
+      }
+
+
+      const username =
+        candidate.username?.trim();
+
+      if (username) {
+        return username;
+      }
+
+    }
+
+
+    return '';
+
+  }
+
+
+  // =========================================================
+  // GET CURRENT USER NAME
+  // =========================================================
+
+  private getCurrentUserName(): string {
+
+    const resolvedName =
+      this.resolveUserName(
+        this.currentUserId
+      );
+
+
+    if (resolvedName) {
+      return resolvedName;
+    }
+
+
+    const storedName =
+      localStorage.getItem('userName') ||
+      localStorage.getItem('username') ||
+      localStorage.getItem('displayName') ||
+      localStorage.getItem('name');
+
+
+    if (storedName?.trim()) {
+
+      return storedName.trim();
+
+    }
+
+
+    return 'User';
 
   }
 
@@ -692,17 +1449,16 @@ export class ChatWindowComponent
 
     this.attachMedia();
 
-    /*
-     * Initial conversation loading should always finish
-     * at the bottom.
-     */
+
     if (
       this.initialScrollPending &&
       !this.restoringScrollPosition &&
       this.scrollContainer
     ) {
 
-      this.initialScrollPending = false;
+      this.initialScrollPending =
+        false;
+
 
       this.forceScrollToBottom();
 
@@ -715,43 +1471,49 @@ export class ChatWindowComponent
   // MESSAGE SCROLL
   // =========================================================
 
-  public onMessageScroll(event: Event): void {
+  public onMessageScroll(
+    event: Event
+  ): void {
 
     if (this.isDestroyed) {
       return;
     }
 
+
     if (!this.activeTargetUserId) {
       return;
     }
+
 
     if (this.isLoadingOlderMessages) {
       return;
     }
 
+
     if (this.restoringScrollPosition) {
       return;
     }
+
 
     if (Date.now() < this.ignoreScrollUntil) {
       return;
     }
 
+
     if (!this.hasMoreMessages) {
       return;
     }
 
+
     const element =
       event.target as HTMLElement | null;
+
 
     if (!element) {
       return;
     }
 
-    /*
-     * Only load older messages when the user reaches
-     * the TOP of the chat.
-     */
+
     if (
       element.scrollTop <=
       this.scrollThreshold
@@ -773,31 +1535,35 @@ export class ChatWindowComponent
     const targetUserId =
       this.activeTargetUserId;
 
+
     if (!targetUserId) {
       return;
     }
+
 
     if (this.isLoadingOlderMessages) {
       return;
     }
 
+
     if (!this.hasMoreMessages) {
       return;
     }
 
+
     const element =
       this.scrollContainer?.nativeElement;
+
 
     if (!element) {
       return;
     }
 
+
     const nextPage =
       this.messagePageNumber + 1;
 
-    /*
-     * Do not request same page twice.
-     */
+
     if (
       this.requestedPages.has(nextPage)
     ) {
@@ -806,17 +1572,22 @@ export class ChatWindowComponent
 
     }
 
-    this.isLoadingOlderMessages = true;
 
-    this.restoringScrollPosition = true;
+    this.isLoadingOlderMessages =
+      true;
 
-    this.loadingPageNumber = nextPage;
+    this.restoringScrollPosition =
+      true;
 
-    this.requestedPages.add(nextPage);
+    this.loadingPageNumber =
+      nextPage;
 
-    /*
-     * Save exact position before loading.
-     */
+
+    this.requestedPages.add(
+      nextPage
+    );
+
+
     const oldScrollHeight =
       element.scrollHeight;
 
@@ -828,16 +1599,6 @@ export class ChatWindowComponent
         element
       );
 
-    console.log(
-      'Loading older messages:',
-      {
-        conversation: targetUserId,
-        page: nextPage,
-        oldScrollHeight,
-        oldScrollTop,
-        oldFirstVisibleMessage
-      }
-    );
 
     try {
 
@@ -848,18 +1609,12 @@ export class ChatWindowComponent
           this.messagePageSize
         );
 
+
       if (this.isDestroyed) {
         return;
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Always advance the current page after the request.
-       *
-       * Previously page 2 could remain as the current page
-       * when the service returned void.
-       */
+
       if (response) {
 
         this.updatePaginationFromResponse(
@@ -872,35 +1627,28 @@ export class ChatWindowComponent
         this.messagePageNumber =
           nextPage;
 
-        /*
-         * If the service returns no pagination metadata,
-         * don't prematurely stop pagination.
-         */
-        this.hasMoreMessages = true;
+        this.hasMoreMessages =
+          true;
 
       }
 
-      /*
-       * Wait until activeMessages$ updates Angular view.
-       */
+
       await this.waitForViewUpdate();
+
 
       if (this.isDestroyed) {
         return;
       }
 
-      /*
-       * Restore position.
-       *
-       * Method 1:
-       * scrollHeight difference.
-       */
+
       const newContainer =
         this.scrollContainer?.nativeElement;
+
 
       if (!newContainer) {
         return;
       }
+
 
       const newScrollHeight =
         newContainer.scrollHeight;
@@ -909,68 +1657,59 @@ export class ChatWindowComponent
         newScrollHeight -
         oldScrollHeight;
 
+
       newContainer.scrollTop =
         oldScrollTop +
         heightDifference;
 
-      /*
-       * Second correction using the actual first visible
-       * message.
-       */
+
       await this.waitForViewUpdate();
+
 
       if (this.isDestroyed) {
         return;
       }
 
+
       this.restoreScrollByMessage(
         oldFirstVisibleMessage
       );
 
-      /*
-       * Final correction.
-       */
+
       requestAnimationFrame(() => {
 
         if (this.isDestroyed) {
           return;
         }
 
+
         const container =
           this.scrollContainer?.nativeElement;
+
 
         if (!container) {
           return;
         }
 
+
         const currentHeight =
           container.scrollHeight;
 
-        /*
-         * Do not allow loading older messages to send
-         * the user to the bottom.
-         */
+
         if (
           currentHeight > 0 &&
-          oldScrollTop > 0
+          oldScrollTop > 0 &&
+          container.scrollTop <
+          this.scrollThreshold
         ) {
 
-          /*
-           * Position should remain around the same content.
-           */
-          if (
-            container.scrollTop <
-            this.scrollThreshold
-          ) {
-
-            container.scrollTop =
-              Math.min(
-                oldScrollTop + heightDifference,
-                container.scrollHeight
-                  - container.clientHeight
-              );
-
-          }
+          container.scrollTop =
+            Math.min(
+              oldScrollTop +
+              heightDifference,
+              container.scrollHeight -
+              container.clientHeight
+            );
 
         }
 
@@ -978,12 +1717,10 @@ export class ChatWindowComponent
 
     } catch (error: unknown) {
 
-      /*
-       * Allow retry if the request failed.
-       */
       this.requestedPages.delete(
         nextPage
       );
+
 
       console.error(
         `Failed to load message page ${nextPage}:`,
@@ -992,7 +1729,9 @@ export class ChatWindowComponent
 
     } finally {
 
-      this.loadingPageNumber = null;
+      this.loadingPageNumber =
+        null;
+
 
       setTimeout(() => {
 
@@ -1000,9 +1739,12 @@ export class ChatWindowComponent
           return;
         }
 
-        this.restoringScrollPosition = false;
 
-        this.isLoadingOlderMessages = false;
+        this.restoringScrollPosition =
+          false;
+
+        this.isLoadingOlderMessages =
+          false;
 
       }, 50);
 
@@ -1020,19 +1762,11 @@ export class ChatWindowComponent
     requestedPage: number
   ): void {
 
-    /*
-     * Always update current page.
-     */
     this.messagePageNumber =
       typeof response.pageNumber === 'number'
         ? response.pageNumber
         : requestedPage;
 
-
-    // -------------------------------------------------------
-    // CASE 1
-    // hasNextPage
-    // -------------------------------------------------------
 
     if (
       typeof response.hasNextPage ===
@@ -1046,11 +1780,6 @@ export class ChatWindowComponent
 
     }
 
-
-    // -------------------------------------------------------
-    // CASE 2
-    // totalPages
-    // -------------------------------------------------------
 
     if (
       typeof response.totalPages ===
@@ -1066,16 +1795,9 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // CASE 3
-    // totalCount + pageSize
-    // -------------------------------------------------------
-
     if (
-      typeof response.totalCount ===
-        'number' &&
-      typeof response.pageSize ===
-        'number' &&
+      typeof response.totalCount === 'number' &&
+      typeof response.pageSize === 'number' &&
       response.pageSize > 0
     ) {
 
@@ -1084,6 +1806,7 @@ export class ChatWindowComponent
           response.totalCount /
           response.pageSize
         );
+
 
       this.hasMoreMessages =
         this.messagePageNumber <
@@ -1094,19 +1817,10 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // CASE 4
-    // items length
-    // -------------------------------------------------------
-
     if (
       Array.isArray(response.items)
     ) {
 
-      /*
-       * If the API returned a complete page,
-       * there may be another page.
-       */
       this.hasMoreMessages =
         response.items.length >=
         this.messagePageSize;
@@ -1116,15 +1830,8 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // CASE 5
-    // NO METADATA
-    // -------------------------------------------------------
-
-    /*
-     * Do NOT set false here.
-     */
-    this.hasMoreMessages = true;
+    this.hasMoreMessages =
+      true;
 
   }
 
@@ -1171,10 +1878,6 @@ export class ChatWindowComponent
       );
 
 
-    // -------------------------------------------------------
-    // OBSERVABLE
-    // -------------------------------------------------------
-
     if (
       result &&
       typeof (
@@ -1188,6 +1891,7 @@ export class ChatWindowComponent
         (resolve, reject) => {
 
           let resolved = false;
+
 
           const observable =
             result as {
@@ -1213,7 +1917,9 @@ export class ChatWindowComponent
                 return;
               }
 
+
               resolved = true;
+
 
               if (
                 value &&
@@ -1232,11 +1938,13 @@ export class ChatWindowComponent
 
             },
 
+
             error: (error: unknown) => {
 
               if (resolved) {
                 return;
               }
+
 
               resolved = true;
 
@@ -1252,10 +1960,6 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // PROMISE
-    // -------------------------------------------------------
-
     if (
       result &&
       typeof (
@@ -1270,6 +1974,7 @@ export class ChatWindowComponent
           result as Promise<unknown>
         );
 
+
       if (
         response &&
         typeof response === 'object'
@@ -1279,14 +1984,11 @@ export class ChatWindowComponent
 
       }
 
+
       return null;
 
     }
 
-
-    // -------------------------------------------------------
-    // SYNCHRONOUS
-    // -------------------------------------------------------
 
     if (
       result &&
@@ -1297,10 +1999,6 @@ export class ChatWindowComponent
 
     }
 
-
-    // -------------------------------------------------------
-    // SERVICE UPDATED SUBJECT INTERNALLY
-    // -------------------------------------------------------
 
     return null;
 
@@ -1317,10 +2015,8 @@ export class ChatWindowComponent
 
     try {
 
-      /*
-       * Page 1 is always loaded when opening a conversation.
-       */
       this.requestedPages.add(1);
+
 
       const response =
         await this.loadConversationPage(
@@ -1329,18 +2025,19 @@ export class ChatWindowComponent
           this.messagePageSize
         );
 
+
       if (this.isDestroyed) {
         return;
       }
 
+
       if (!response) {
 
-        this.messagePageNumber = 1;
+        this.messagePageNumber =
+          1;
 
-        /*
-         * Service may not return metadata.
-         */
-        this.hasMoreMessages = true;
+        this.hasMoreMessages =
+          true;
 
       } else {
 
@@ -1351,43 +2048,19 @@ export class ChatWindowComponent
 
       }
 
-      /*
-       * IMPORTANT:
-       *
-       * Opening a conversation ALWAYS goes to bottom.
-       */
-      this.initialScrollPending = true;
+
+      this.initialScrollPending =
+        true;
+
 
       await this.waitForViewUpdate();
+
 
       if (!this.isDestroyed) {
 
         this.forceScrollToBottom();
 
       }
-
-      console.log(
-        'Initial pagination:',
-        {
-          pageNumber:
-            response?.pageNumber,
-
-          pageSize:
-            response?.pageSize,
-
-          totalCount:
-            response?.totalCount,
-
-          totalPages:
-            response?.totalPages,
-
-          hasNextPage:
-            response?.hasNextPage,
-
-          hasMoreMessages:
-            this.hasMoreMessages
-        }
-      );
 
     } catch (error: unknown) {
 
@@ -1396,7 +2069,9 @@ export class ChatWindowComponent
         error
       );
 
-      this.hasMoreMessages = false;
+
+      this.hasMoreMessages =
+        false;
 
     }
 
@@ -1409,30 +2084,32 @@ export class ChatWindowComponent
 
   private waitForViewUpdate(): Promise<void> {
 
-    return new Promise<void>((resolve) => {
+    return new Promise<void>(
+      (resolve) => {
 
-      setTimeout(() => {
+        setTimeout(() => {
 
-        if (
-          typeof requestAnimationFrame ===
-          'function'
-        ) {
+          if (
+            typeof requestAnimationFrame ===
+            'function'
+          ) {
 
-          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+
+              resolve();
+
+            });
+
+          } else {
 
             resolve();
 
-          });
+          }
 
-        } else {
+        }, 0);
 
-          resolve();
-
-        }
-
-      }, 0);
-
-    });
+      }
+    );
 
   }
 
@@ -1443,31 +2120,26 @@ export class ChatWindowComponent
 
   private resetMessagePagination(): void {
 
-    this.messagePageNumber = 1;
+    this.messagePageNumber =
+      1;
 
-    this.hasMoreMessages = true;
+    this.hasMoreMessages =
+      true;
 
-    this.isLoadingOlderMessages = false;
+    this.isLoadingOlderMessages =
+      false;
 
-    this.restoringScrollPosition = false;
+    this.restoringScrollPosition =
+      false;
 
-    this.initialScrollPending = false;
+    this.initialScrollPending =
+      false;
 
-    this.loadingPageNumber = null;
+    this.loadingPageNumber =
+      null;
 
-    /*
-     * Very important:
-     *
-     * Pages belong to a conversation.
-     *
-     * When changing chat, forget previous pages.
-     */
     this.requestedPages.clear();
 
-    /*
-     * Ignore the artificial scroll generated by
-     * setting scrollTop.
-     */
     this.ignoreScrollUntil =
       Date.now() + 1000;
 
@@ -1483,14 +2155,17 @@ export class ChatWindowComponent
     const element =
       this.scrollContainer?.nativeElement;
 
+
     if (!element) {
       return true;
     }
+
 
     const distanceFromBottom =
       element.scrollHeight -
       element.scrollTop -
       element.clientHeight;
+
 
     return distanceFromBottom <= 120;
 
@@ -1510,6 +2185,7 @@ export class ChatWindowComponent
         '[data-message-id]'
       );
 
+
     for (
       const element of Array.from(
         messageElements
@@ -1519,8 +2195,10 @@ export class ChatWindowComponent
       const htmlElement =
         element as HTMLElement;
 
+
       const top =
         htmlElement.offsetTop;
+
 
       if (
         top >=
@@ -1537,13 +2215,14 @@ export class ChatWindowComponent
 
     }
 
+
     return null;
 
   }
 
 
   // =========================================================
-  // RESTORE SCROLL BY MESSAGE
+  // RESTORE SCROLL
   // =========================================================
 
   private restoreScrollByMessage(
@@ -1554,21 +2233,26 @@ export class ChatWindowComponent
       return;
     }
 
+
     const container =
       this.scrollContainer?.nativeElement;
+
 
     if (!container) {
       return;
     }
+
 
     const messageElement =
       container.querySelector(
         `[data-message-id="${CSS.escape(messageId)}"]`
       ) as HTMLElement | null;
 
+
     if (!messageElement) {
       return;
     }
+
 
     const containerRect =
       container.getBoundingClientRect();
@@ -1576,9 +2260,11 @@ export class ChatWindowComponent
     const messageRect =
       messageElement.getBoundingClientRect();
 
+
     const difference =
       messageRect.top -
       containerRect.top;
+
 
     container.scrollTop +=
       difference;
@@ -1608,13 +2294,16 @@ export class ChatWindowComponent
 
             }
 
+
             const messageId =
               String(event.messageId);
+
 
             const status =
               this.normalizeMessageStatus(
                 event.status as RawMessageStatus
               );
+
 
             if (!status) {
 
@@ -1626,6 +2315,7 @@ export class ChatWindowComponent
               return;
 
             }
+
 
             this.updateMessageStatus(
               messageId,
@@ -1659,6 +2349,7 @@ export class ChatWindowComponent
 
     }
 
+
     if (typeof status === 'number') {
 
       switch (status) {
@@ -1679,8 +2370,10 @@ export class ChatWindowComponent
 
     }
 
+
     const normalized =
       status.trim().toLowerCase();
+
 
     switch (normalized) {
 
@@ -1737,6 +2430,7 @@ export class ChatWindowComponent
       const value =
         service.activeMessagesSubject.getValue();
 
+
       if (Array.isArray(value)) {
 
         return value as MessageWithStatus[];
@@ -1779,19 +2473,24 @@ export class ChatWindowComponent
     const messages =
       this.getActiveMessages();
 
+
     if (!messages.length) {
       return;
     }
 
+
     const message =
       messages.find(
         (item: MessageWithStatus) =>
-          this.getMessageId(item) === messageId
+          this.getMessageId(item) ===
+          messageId
       );
+
 
     if (!message) {
       return;
     }
+
 
     const currentStatus =
       this.getMessageStatus(message);
@@ -1812,7 +2511,8 @@ export class ChatWindowComponent
     }
 
 
-    message.status = status;
+    message.status =
+      status;
 
 
     if (
@@ -1820,7 +2520,9 @@ export class ChatWindowComponent
       status === 'read'
     ) {
 
-      message.isDelivered = true;
+      message.isDelivered =
+        true;
+
 
       if (deliveredAt) {
 
@@ -1837,7 +2539,9 @@ export class ChatWindowComponent
 
     if (status === 'read') {
 
-      message.isRead = true;
+      message.isRead =
+        true;
+
 
       if (readAt) {
 
@@ -1951,8 +2655,10 @@ export class ChatWindowComponent
 
     }
 
+
     const id =
       String(message.id).trim();
+
 
     return id || null;
 
@@ -2040,7 +2746,8 @@ export class ChatWindowComponent
     message: MessageWithStatus
   ): string {
 
-    return this.getMessageStatus(message) === 'sent'
+    return this.getMessageStatus(message) ===
+      'sent'
       ? '✓'
       : '✓✓';
 
@@ -2254,7 +2961,8 @@ export class ChatWindowComponent
       messages.filter(
         (message: MessageWithStatus) =>
           this.isMessageForCurrentUser(message) &&
-          this.getMessageStatus(message) === 'sent'
+          this.getMessageStatus(message) ===
+          'sent'
       );
 
 
@@ -2265,6 +2973,7 @@ export class ChatWindowComponent
       if (this.isDestroyed) {
         return;
       }
+
 
       await this.markMessageDelivered(
         message
@@ -2298,7 +3007,8 @@ export class ChatWindowComponent
 
 
     if (
-      this.getMessageStatus(message) === 'read'
+      this.getMessageStatus(message) ===
+      'read'
     ) {
 
       return;
@@ -2350,7 +3060,8 @@ export class ChatWindowComponent
         (message: MessageWithStatus) =>
           this.isMessageForCurrentUser(message) &&
           this.belongsToActiveConversation(message) &&
-          this.getMessageStatus(message) !== 'read'
+          this.getMessageStatus(message) !==
+          'read'
       );
 
 
@@ -2361,6 +3072,7 @@ export class ChatWindowComponent
       if (this.isDestroyed) {
         return;
       }
+
 
       await this.markMessageRead(
         message
@@ -2509,7 +3221,8 @@ export class ChatWindowComponent
 
     if (user) {
 
-      user.isOnLine = true;
+      user.isOnLine =
+        true;
 
     }
 
@@ -2543,7 +3256,8 @@ export class ChatWindowComponent
     }
 
 
-    user.isOnLine = false;
+    user.isOnLine =
+      false;
 
 
     if (lastSeen) {
@@ -2629,148 +3343,92 @@ export class ChatWindowComponent
     }
 
 
-    // -------------------------------------------------------
-    // LOCAL VIDEO
-    // -------------------------------------------------------
-
-    if (
-      this.localVideo?.nativeElement &&
-      this.localStream &&
-      this.activeCallType === 'video'
-    ) {
-
-      const video =
-        this.localVideo.nativeElement;
+    const callType =
+      this.activeCallType ||
+      this.callType;
 
 
-      if (
-        video.srcObject !==
-        this.localStream
-      ) {
-
-        video.srcObject =
-          this.localStream;
-
-      }
-
-
-      video.muted = true;
-
-      video.autoplay = true;
-
-      video.playsInline = true;
-
-
-      if (
-        this.lastLocalStream !==
-        this.localStream
-      ) {
-
-        this.lastLocalStream =
-          this.localStream;
-
-        video.play()
-          .catch(() => {});
-
-      }
-
+    if (!callType) {
+      return;
     }
 
 
-    // -------------------------------------------------------
-    // REMOTE VIDEO
-    // -------------------------------------------------------
+    // =======================================================
+    // VOICE CALL
+    // =======================================================
 
-    if (
-      this.remoteVideo?.nativeElement &&
-      this.remoteStream &&
-      this.activeCallType === 'video'
-    ) {
+    if (callType === 'voice') {
 
-      const video =
-        this.remoteVideo.nativeElement;
+      this.clearVideoElements();
 
 
-      if (
-        video.srcObject !==
-        this.remoteStream
-      ) {
+      if (this.localVideo?.nativeElement) {
 
-        video.srcObject =
-          this.remoteStream;
+        const localVideo =
+          this.localVideo.nativeElement;
+
+
+        localVideo.pause();
+
+        localVideo.srcObject =
+          null;
 
       }
 
 
-      video.autoplay = true;
+      if (this.remoteVideo?.nativeElement) {
 
-      video.playsInline = true;
-
-      video.muted = false;
-
-
-      if (
-        this.lastRemoteStream !==
-        this.remoteStream
-      ) {
-
-        this.lastRemoteStream =
-          this.remoteStream;
-
-        video.play()
-          .catch(() => {});
-
-      }
-
-    }
+        const remoteVideo =
+          this.remoteVideo.nativeElement;
 
 
-    // -------------------------------------------------------
-    // REMOTE AUDIO
-    // -------------------------------------------------------
+        remoteVideo.pause();
 
-    if (
-      this.remoteAudio?.nativeElement &&
-      this.remoteStream &&
-      this.activeCallType === 'voice'
-    ) {
-
-      const audio =
-        this.remoteAudio.nativeElement;
-
-
-      if (
-        audio.srcObject !==
-        this.remoteStream
-      ) {
-
-        audio.srcObject =
-          this.remoteStream;
+        remoteVideo.srcObject =
+          null;
 
       }
 
 
-      audio.autoplay = true;
-
-      audio.controls = false;
-
-      audio.volume = 1;
-
-
       if (
-        this.lastRemoteStream !==
+        this.remoteAudio?.nativeElement &&
         this.remoteStream
       ) {
 
-        this.lastRemoteStream =
-          this.remoteStream;
+        const audio =
+          this.remoteAudio.nativeElement;
 
-        audio.play()
+
+        if (
+          audio.srcObject !==
+          this.remoteStream
+        ) {
+
+          audio.srcObject =
+            this.remoteStream;
+
+        }
+
+
+        audio.autoplay =
+          true;
+
+        audio.controls =
+          false;
+
+        audio.muted =
+          false;
+
+        audio.volume =
+          1;
+
+
+        void audio.play()
           .catch(
             (error: unknown) => {
 
               console.warn(
-                'Remote audio autoplay blocked:',
+                '[ChatWindow] Remote voice audio play blocked:',
                 error
               );
 
@@ -2779,7 +3437,144 @@ export class ChatWindowComponent
 
       }
 
+
+      return;
+
     }
+
+
+    // =======================================================
+    // VIDEO CALL
+    // =======================================================
+
+    if (callType === 'video') {
+
+      if (this.remoteAudio?.nativeElement) {
+
+        const audio =
+          this.remoteAudio.nativeElement;
+
+
+        audio.pause();
+
+        audio.srcObject =
+          null;
+
+      }
+
+
+      if (
+        this.localVideo?.nativeElement &&
+        this.localStream
+      ) {
+
+        const video =
+          this.localVideo.nativeElement;
+
+
+        if (
+          video.srcObject !==
+          this.localStream
+        ) {
+
+          video.srcObject =
+            this.localStream;
+
+        }
+
+
+        video.muted =
+          true;
+
+        video.autoplay =
+          true;
+
+        video.playsInline =
+          true;
+
+
+        if (
+          this.lastLocalStream !==
+          this.localStream
+        ) {
+
+          this.lastLocalStream =
+            this.localStream;
+
+
+          void video.play()
+            .catch(() => {});
+
+        }
+
+      }
+
+
+      if (
+        this.remoteVideo?.nativeElement &&
+        this.remoteStream
+      ) {
+
+        const video =
+          this.remoteVideo.nativeElement;
+
+
+        if (
+          video.srcObject !==
+          this.remoteStream
+        ) {
+
+          video.srcObject =
+            this.remoteStream;
+
+        }
+
+
+        video.autoplay =
+          true;
+
+        video.playsInline =
+          true;
+
+        video.muted =
+          false;
+
+
+        if (
+          this.lastRemoteStream !==
+          this.remoteStream
+        ) {
+
+          this.lastRemoteStream =
+            this.remoteStream;
+
+
+          void video.play()
+            .catch(
+              (error: unknown) => {
+
+                console.warn(
+                  '[ChatWindow] Remote video play failed:',
+                  error
+                );
+
+              }
+            );
+
+        }
+
+      }
+
+
+      return;
+
+    }
+
+
+    console.warn(
+      '[ChatWindow] Unknown call type:',
+      callType
+    );
 
   }
 
@@ -2806,25 +3601,93 @@ export class ChatWindowComponent
     }
 
 
-    this.isStartingCall = true;
+    const targetUserId =
+      this.activeTargetUserId;
 
-    this.activeCallType = 'video';
 
-    this.callType = 'video';
+    const targetName =
+      this.activeTargetName ||
+      this.resolveUserName(targetUserId) ||
+      'User';
 
-    this.callStatus = 'Calling...';
 
-    this.isMicrophoneMuted = false;
+    const callType: CallType =
+      'video';
 
-    this.isCameraOff = false;
+
+    this.outgoingCallTargetUserId =
+      targetUserId;
+
+
+    this.outgoingCallName =
+      targetName;
+
+
+    this.showOutgoingCallScreen =
+      true;
+
+    this.isOutgoingCall =
+      true;
+
+    this.outgoingCallPending =
+      true;
+
+    this.isStartingCall =
+      true;
+
+
+    this.activeCallType =
+      callType;
+
+    this.callType =
+      callType;
+
+
+    this.incomingCallType =
+      null;
+
+
+    this.callerCallStatus =
+      `Calling ${this.outgoingCallName}...`;
+
+    this.callStatus =
+      `Calling ${this.outgoingCallName}...`;
+
+
+    this.isMicrophoneMuted =
+      false;
+
+    this.isCameraOff =
+      false;
+
+
+    this.startCallingDuration();
+
+
+    await this.waitForViewUpdate();
 
 
     try {
 
-      await this.callService
-        .startCall(
-          this.activeTargetUserId
-        );
+      await this.callService.startCall(
+        targetUserId,
+        callType
+      );
+
+
+      if (
+        this.outgoingCallPending &&
+        this.showOutgoingCallScreen
+      ) {
+
+        this.callerCallStatus =
+          `Ringing ${this.outgoingCallName}...`;
+
+        this.callStatus =
+          `Ringing ${this.outgoingCallName}...`;
+
+      }
+
 
       this.scheduleMediaAttach();
 
@@ -2835,18 +3698,33 @@ export class ChatWindowComponent
         error
       );
 
+
+      this.stopCallingDuration();
+
+
+      this.closeOutgoingCallScreen();
+
+
       this.stopMedia();
 
-      this.activeCallType = null;
 
-      this.callType = null;
+      this.activeCallType =
+        null;
+
+      this.callType =
+        null;
+
+
+      this.callerCallStatus =
+        '';
 
       this.callStatus =
         'Unable to start video call.';
 
     } finally {
 
-      this.isStartingCall = false;
+      this.isStartingCall =
+        false;
 
     }
 
@@ -2875,25 +3753,110 @@ export class ChatWindowComponent
     }
 
 
-    this.isStartingCall = true;
+    const targetUserId =
+      this.activeTargetUserId;
 
-    this.activeCallType = 'voice';
 
-    this.callType = 'voice';
+    const targetName =
+      this.activeTargetName ||
+      this.resolveUserName(targetUserId) ||
+      'User';
 
-    this.callStatus = 'Calling...';
 
-    this.isMicrophoneMuted = false;
+    const callType: CallType =
+      'voice';
 
-    this.isCameraOff = false;
+
+    this.outgoingCallTargetUserId =
+      targetUserId;
+
+
+    this.outgoingCallName =
+      targetName;
+
+
+    this.showOutgoingCallScreen =
+      true;
+
+    this.isOutgoingCall =
+      true;
+
+    this.outgoingCallPending =
+      true;
+
+    this.isStartingCall =
+      true;
+
+
+    this.activeCallType =
+      callType;
+
+    this.callType =
+      callType;
+
+
+    this.incomingCallType =
+      null;
+
+
+    this.callerCallStatus =
+      `Calling ${this.outgoingCallName}...`;
+
+    this.callStatus =
+      `Calling ${this.outgoingCallName}...`;
+
+
+    this.isMicrophoneMuted =
+      false;
+
+    this.isCameraOff =
+      true;
+
+
+    this.clearVideoElements();
+
+
+    if (this.remoteAudio?.nativeElement) {
+
+      const audio =
+        this.remoteAudio.nativeElement;
+
+
+      audio.pause();
+
+      audio.srcObject =
+        null;
+
+    }
+
+
+    this.startCallingDuration();
+
+
+    await this.waitForViewUpdate();
 
 
     try {
 
-      await this.callService
-        .startVoiceCall(
-          this.activeTargetUserId
-        );
+      await this.callService.startCall(
+        targetUserId,
+        callType
+      );
+
+
+      if (
+        this.outgoingCallPending &&
+        this.showOutgoingCallScreen
+      ) {
+
+        this.callerCallStatus =
+          `Ringing ${this.outgoingCallName}...`;
+
+        this.callStatus =
+          `Ringing ${this.outgoingCallName}...`;
+
+      }
+
 
       this.scheduleMediaAttach();
 
@@ -2904,18 +3867,33 @@ export class ChatWindowComponent
         error
       );
 
+
+      this.stopCallingDuration();
+
+
+      this.closeOutgoingCallScreen();
+
+
       this.stopMedia();
 
-      this.activeCallType = null;
 
-      this.callType = null;
+      this.activeCallType =
+        null;
+
+      this.callType =
+        null;
+
+
+      this.callerCallStatus =
+        '';
 
       this.callStatus =
         'Unable to start voice call.';
 
     } finally {
 
-      this.isStartingCall = false;
+      this.isStartingCall =
+        false;
 
     }
 
@@ -2923,7 +3901,7 @@ export class ChatWindowComponent
 
 
   // =========================================================
-  // ACCEPT CALL
+  // ACCEPT INCOMING CALL
   // =========================================================
 
   public async acceptIncomingCall(): Promise<void> {
@@ -2937,35 +3915,124 @@ export class ChatWindowComponent
       this.incomingCallUserId;
 
 
+    const acceptedCallType =
+      this.incomingCallType;
+
+
+    if (!acceptedCallType) {
+
+      console.error(
+        '[ChatWindow] Cannot accept call: incoming call type is missing.'
+      );
+
+
+      this.callStatus =
+        'Unable to determine call type. Please try again.';
+
+      return;
+
+    }
+
+
+    console.log(
+      '[ChatWindow] Accepting incoming call:',
+      {
+        callerId,
+        callType:
+          acceptedCallType
+      }
+    );
+
+
     this.activeTargetUserId =
       callerId;
 
-    this.activeTargetName =
-      this.incomingCallName ||
-      'Caller';
+
+    const callerName =
+      this.incomingCallName.trim();
+
+
+    if (
+      callerName &&
+      callerName !== 'Caller'
+    ) {
+
+      this.activeTargetName =
+        callerName;
+
+    } else {
+
+      const resolvedName =
+        this.resolveUserName(callerId);
+
+
+      this.activeTargetName =
+        resolvedName ||
+        'Caller';
+
+    }
+
 
     this.activeCallType =
-      this.incomingCallType;
+      acceptedCallType;
 
     this.callType =
-      this.incomingCallType;
+      acceptedCallType;
+
+
+    if (
+      acceptedCallType ===
+      'voice'
+    ) {
+
+      this.isCameraOff =
+        true;
+
+
+      this.clearVideoElements();
+
+
+      if (this.remoteAudio?.nativeElement) {
+
+        const audio =
+          this.remoteAudio.nativeElement;
+
+
+        audio.pause();
+
+        audio.srcObject =
+          null;
+
+      }
+
+    }
+
+    else {
+
+      this.isCameraOff =
+        false;
+
+    }
 
 
     try {
 
       this.callStatus =
-        this.activeCallType === 'voice'
-          ? 'Connecting voice call...'
-          : 'Connecting video call...';
+        acceptedCallType === 'voice'
+          ? `Connecting voice call with ${this.activeTargetName}...`
+          : `Connecting video call with ${this.activeTargetName}...`;
 
 
       await this.callService
         .acceptCall(callerId);
 
 
-      this.incomingCallUserId = null;
+      this.incomingCallUserId =
+        null;
 
-      this.incomingCallName = '';
+      this.incomingCallName =
+        '';
+
 
       this.scheduleMediaAttach();
 
@@ -2975,6 +4042,7 @@ export class ChatWindowComponent
         'Accept call failed:',
         error
       );
+
 
       this.callStatus =
         'Unable to accept call.';
@@ -3014,15 +4082,43 @@ export class ChatWindowComponent
     }
 
 
-    this.incomingCallUserId = null;
+    this.stopCallingDuration();
 
-    this.incomingCallName = '';
 
-    this.activeCallType = null;
+    this.incomingCallUserId =
+      null;
 
-    this.callType = null;
+    this.incomingCallName =
+      '';
 
-    this.callStatus = '';
+    this.incomingCallType =
+      null;
+
+    this.activeCallType =
+      null;
+
+    this.callType =
+      null;
+
+
+    this.showOutgoingCallScreen =
+      false;
+
+    this.isOutgoingCall =
+      false;
+
+    this.outgoingCallPending =
+      false;
+
+    this.outgoingCallTargetUserId =
+      null;
+
+
+    this.stopMedia();
+
+
+    this.callStatus =
+      '';
 
   }
 
@@ -3104,6 +4200,12 @@ export class ChatWindowComponent
 
   public async endCall(): Promise<void> {
 
+    this.stopCallingDuration();
+
+
+    this.closeOutgoingCallScreen();
+
+
     try {
 
       await this.callService.endCall();
@@ -3119,19 +4221,63 @@ export class ChatWindowComponent
 
       this.stopMedia();
 
-      this.activeCallType = null;
 
-      this.callType = null;
+      this.resetCallState();
 
-      this.incomingCallUserId = null;
 
-      this.incomingCallName = '';
+      this.outgoingCallName =
+        '';
 
-      this.isStartingCall = false;
+      this.callerCallStatus =
+        '';
 
-      this.callStatus = '';
+      this.callStatus =
+        '';
 
     }
+
+  }
+
+
+  // =========================================================
+  // CLEAR VIDEO ELEMENTS
+  // =========================================================
+
+  private clearVideoElements(): void {
+
+    if (this.localVideo?.nativeElement) {
+
+      const video =
+        this.localVideo.nativeElement;
+
+
+      video.pause();
+
+      video.srcObject =
+        null;
+
+    }
+
+
+    if (this.remoteVideo?.nativeElement) {
+
+      const video =
+        this.remoteVideo.nativeElement;
+
+
+      video.pause();
+
+      video.srcObject =
+        null;
+
+    }
+
+
+    this.lastLocalStream =
+      null;
+
+    this.lastRemoteStream =
+      null;
 
   }
 
@@ -3160,7 +4306,9 @@ export class ChatWindowComponent
           }
         );
 
-      this.localStream = null;
+
+      this.localStream =
+        null;
 
     }
 
@@ -3183,33 +4331,14 @@ export class ChatWindowComponent
           }
         );
 
-      this.remoteStream = null;
+
+      this.remoteStream =
+        null;
 
     }
 
 
-    if (this.localVideo?.nativeElement) {
-
-      const video =
-        this.localVideo.nativeElement;
-
-      video.pause();
-
-      video.srcObject = null;
-
-    }
-
-
-    if (this.remoteVideo?.nativeElement) {
-
-      const video =
-        this.remoteVideo.nativeElement;
-
-      video.pause();
-
-      video.srcObject = null;
-
-    }
+    this.clearVideoElements();
 
 
     if (this.remoteAudio?.nativeElement) {
@@ -3217,20 +4346,27 @@ export class ChatWindowComponent
       const audio =
         this.remoteAudio.nativeElement;
 
+
       audio.pause();
 
-      audio.srcObject = null;
+      audio.srcObject =
+        null;
 
     }
 
 
-    this.lastLocalStream = null;
+    this.lastLocalStream =
+      null;
 
-    this.lastRemoteStream = null;
+    this.lastRemoteStream =
+      null;
 
-    this.isMicrophoneMuted = false;
 
-    this.isCameraOff = false;
+    this.isMicrophoneMuted =
+      false;
+
+    this.isCameraOff =
+      false;
 
   }
 
@@ -3241,11 +4377,14 @@ export class ChatWindowComponent
 
   public openNewChatModal(): void {
 
-    this.showNewChatModal = true;
+    this.showNewChatModal =
+      true;
 
-    this.searchQuery = '';
+    this.searchQuery =
+      '';
 
-    this.searchResults = [];
+    this.searchResults =
+      [];
 
   }
 
@@ -3256,11 +4395,14 @@ export class ChatWindowComponent
 
   public closeNewChatModal(): void {
 
-    this.showNewChatModal = false;
+    this.showNewChatModal =
+      false;
 
-    this.searchQuery = '';
+    this.searchQuery =
+      '';
 
-    this.searchResults = [];
+    this.searchResults =
+      [];
 
   }
 
@@ -3277,7 +4419,8 @@ export class ChatWindowComponent
 
     if (!query) {
 
-      this.searchResults = [];
+      this.searchResults =
+        [];
 
       return;
 
@@ -3297,6 +4440,7 @@ export class ChatWindowComponent
 
         },
 
+
         error: (error: unknown) => {
 
           console.error(
@@ -3304,7 +4448,9 @@ export class ChatWindowComponent
             error
           );
 
-          this.searchResults = [];
+
+          this.searchResults =
+            [];
 
         }
 
@@ -3395,143 +4541,227 @@ export class ChatWindowComponent
     }
 
 
-    const sameConversation = this.activeTargetUserId === targetUserId;
+    const sameConversation =
+      this.activeTargetUserId ===
+      targetUserId;
 
-    this.activeTargetUserId = targetUserId;
+
+    this.activeTargetUserId =
+      targetUserId;
+
+
     if (targetName) {
-      this.activeTargetName = targetName;
+
+      this.activeTargetName =
+        targetName;
+
+    } else {
+
+      const resolvedName =
+        this.resolveUserName(
+          targetUserId
+        );
+
+
+      if (resolvedName) {
+
+        this.activeTargetName =
+          resolvedName;
+
+      }
+
     }
-    /*
-     * If the same conversation is selected again,
-     * keep the current scroll position.
-     */
+
+
     if (sameConversation) {
       return;
     }
-    /*
-     * Reset all pagination state.
-     */
+
+
     this.resetMessagePagination();
-    /*
-     * IMPORTANT:
-     *
-     * New conversation must start at bottom.
-     */
-    this.initialScrollPending = true;
-    /*
-     * Load page 1.
-     */
+
+
+    this.initialScrollPending =
+      true;
+
+
     void this.loadInitialMessagePage(
       targetUserId
     );
 
-    /*
-     * Try immediately.
-     */
 
     this.forceScrollToBottom();
 
-    /*
-     * Then try again after Angular renders messages.
-     */
+
     setTimeout(() => {
+
       if (!this.isDestroyed) {
+
         this.forceScrollToBottom();
+
       }
+
     }, 50);
 
+
     setTimeout(() => {
+
       if (!this.isDestroyed) {
+
         this.forceScrollToBottom();
+
       }
+
     }, 150);
 
+
     setTimeout(() => {
+
       if (!this.isDestroyed) {
+
         this.forceScrollToBottom();
+
       }
+
     }, 400);
 
-    /*
-     * Mark conversation read.
-     */
+
     setTimeout(() => {
+
       if (!this.isDestroyed) {
+
         void this.markActiveConversationAsRead();
+
       }
+
     }, 300);
+
   }
+
 
   // =========================================================
   // INITIAL BOTTOM SCROLL
   // =========================================================
 
   private scheduleInitialBottomScroll(): void {
+
     if (this.isDestroyed) {
       return;
     }
-    this.initialScrollPending = true;
+
+
+    this.initialScrollPending =
+      true;
+
+
     setTimeout(() => {
+
       if (this.isDestroyed) {
         return;
       }
+
+
       this.forceScrollToBottom();
+
+
       requestAnimationFrame(() => {
-        if (this.isDestroyed) {
-          return;
+
+        if (!this.isDestroyed) {
+
+          this.forceScrollToBottom();
+
         }
-        this.forceScrollToBottom();
+
       });
+
     }, 0);
+
   }
+
 
   // =========================================================
   // SEND MESSAGE
   // =========================================================
 
   public async onSendMessage(): Promise<void> {
+
     const message =
       this.newMessageText.trim();
-    if (!message || !this.activeTargetUserId || this.isSending) {
+
+
+    if (
+      !message ||
+      !this.activeTargetUserId ||
+      this.isSending
+    ) {
+
       return;
+
     }
+
+
     const targetUserId =
       this.activeTargetUserId;
-    this.newMessageText = '';
-    this.isSending = true;
+
+
+    this.newMessageText =
+      '';
+
+    this.isSending =
+      true;
+
+
     try {
+
       await this.chatService
         .sendMessage(
           targetUserId,
           message
         );
-      /*
-       * Sending a message means we want bottom.
-       */
+
+
       this.scheduleScrollToBottom();
 
     } catch (error: unknown) {
+
       console.error(
         'Send message failed:',
         error
       );
+
+
       this.newMessageText =
         message;
+
     } finally {
-      this.isSending = false;
+
+      this.isSending =
+        false;
+
     }
+
   }
+
 
   // =========================================================
   // MESSAGE KEYDOWN
   // =========================================================
 
-  public onMessageKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Enter' && !event.shiftKey)
-    {
+  public onMessageKeydown(
+    event: KeyboardEvent
+  ): void {
+
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey
+    ) {
+
       event.preventDefault();
+
       void this.onSendMessage();
+
     }
+
   }
 
 
@@ -3540,30 +4770,54 @@ export class ChatWindowComponent
   // =========================================================
 
   private scheduleScrollToBottom(): void {
+
     if (this.isDestroyed) {
       return;
     }
+
+
     if (this.bottomScrollScheduled) {
       return;
     }
-    this.bottomScrollScheduled = true;
+
+
+    this.bottomScrollScheduled =
+      true;
+
 
     setTimeout(() => {
-      if (this.isDestroyed) {
-        this.bottomScrollScheduled = false;
-        return;
-      }
-      this.forceScrollToBottom();
 
-      requestAnimationFrame(() => {
-        if (!this.isDestroyed) {
-          this.forceScrollToBottom();
-        }
+      if (this.isDestroyed) {
+
         this.bottomScrollScheduled =
           false;
+
+        return;
+
+      }
+
+
+      this.forceScrollToBottom();
+
+
+      requestAnimationFrame(() => {
+
+        if (!this.isDestroyed) {
+
+          this.forceScrollToBottom();
+
+        }
+
+
+        this.bottomScrollScheduled =
+          false;
+
       });
+
     }, 0);
+
   }
+
 
   // =========================================================
   // FORCE BOTTOM SCROLL
@@ -3575,12 +4829,15 @@ export class ChatWindowComponent
       return;
     }
 
+
     const element =
       this.scrollContainer?.nativeElement;
+
 
     if (!element) {
       return;
     }
+
 
     const bottom =
       Math.max(
@@ -3589,15 +4846,19 @@ export class ChatWindowComponent
         element.clientHeight
       );
 
+
     element.scrollTop =
       bottom;
+
 
     this.ignoreScrollUntil =
       Math.max(
         this.ignoreScrollUntil,
         Date.now() + 250
       );
+
   }
+
 
   // =========================================================
   // AVATAR COLOR
@@ -3610,6 +4871,7 @@ export class ChatWindowComponent
     if (!text) {
       return '#e5e7eb';
     }
+
 
     const colors = [
 
@@ -3630,33 +4892,54 @@ export class ChatWindowComponent
       '#D946EF',
       '#EC4899',
       '#F43F5E'
+
     ];
 
+
     let hash = 0;
+
 
     for (
       let i = 0;
       i < text.length;
       i++
     ) {
+
       hash =
         text.charCodeAt(i) +
         ((hash << 5) - hash);
+
     }
+
 
     const index =
       Math.abs(hash) %
       colors.length;
+
+
     return colors[index];
+
   }
+
 
   // =========================================================
   // DESTROY
   // =========================================================
 
   ngOnDestroy(): void {
-    this.isDestroyed = true;
+
+    this.isDestroyed =
+      true;
+
+
+    this.stopCallingDuration();
+
+
     this.stopMedia();
+
+
     this.subscriptions.unsubscribe();
+
   }
+
 }

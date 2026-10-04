@@ -1,23 +1,16 @@
-<div class="chat-container"> <!-- ===================================================== SIDEBAR ===================================================== --> <aside class="chat-sidebar">
+<div class="chat-container"> <!-- ========================================================= SIDEBAR ========================================================= --> <aside class="chat-sidebar">
 <div class="sidebar-header">
-
   <h2>Conversations</h2>
 
   <button
     type="button"
     class="new-chat-btn"
     (click)="openNewChatModal()">
-
     + New Chat
-
   </button>
-
 </div>
 
-<!-- ===================================================
-     NEW CHAT SEARCH
-     =================================================== -->
-
+<!-- NEW CHAT SEARCH -->
 <div
   *ngIf="showNewChatModal"
   class="search-box">
@@ -71,16 +64,15 @@
 
 </div>
 
-<!-- ===================================================
-     CONVERSATIONS
-     =================================================== -->
-
+<!-- CONVERSATIONS -->
 <div class="conversation-list">
 
   <div
     *ngFor="let conv of (conversations$ | async)"
     class="conversation-item"
-    [class.active]="conv.participantUserId === activeTargetUserId"
+    [class.active]="
+      conv.participantUserId === activeTargetUserId
+    "
     (click)="
       startConversation(
         conv.participantUserId,
@@ -96,8 +88,12 @@
 
       <span
         class="avatar-status"
-        [class.online]="isUserOnline(conv.participantUserId)"
-        [class.offline]="!isUserOnline(conv.participantUserId)">
+        [class.online]="
+          isUserOnline(conv.participantUserId)
+        "
+        [class.offline]="
+          !isUserOnline(conv.participantUserId)
+        ">
       </span>
 
       {{
@@ -129,12 +125,10 @@
       <div class="last-message-row">
 
         <p class="last-message">
-
           {{
             conv.lastMessage ||
             'Start conversation...'
           }}
-
         </p>
 
       </div>
@@ -153,13 +147,11 @@
 
 </div>
 
-</aside> <!-- ===================================================== CHAT WINDOW ===================================================== --> <main class="chat-window">
-<ng-container *ngIf="activeTargetUserId; else noChat">
+</aside> <!-- ========================================================= CHAT WINDOW ========================================================= --> <main class="chat-window">
+<ng-container
+  *ngIf="activeTargetUserId; else noChat">
 
-  <!-- =================================================
-       CHAT HEADER
-       ================================================= -->
-
+  <!-- CHAT HEADER -->
   <header class="chat-header">
 
     <div class="user-status">
@@ -191,19 +183,18 @@
 
     </div>
 
-    <!-- =================================================
-         CALL BUTTONS
-         ================================================= -->
-
+    <!-- CALL ACTIONS -->
     <div class="call-actions">
 
-      <!-- Voice Call -->
-
+      <!-- VOICE CALL -->
       <button
         type="button"
         class="call-icon-button voice-call-button"
         (click)="startVoiceCall()"
-        [disabled]="isStartingCall || !activeTargetUserId"
+        [disabled]="
+          isStartingCall ||
+          !activeTargetUserId
+        "
         aria-label="Voice call"
         title="Voice call">
 
@@ -229,13 +220,15 @@
 
       </button>
 
-      <!-- Video Call -->
-
+      <!-- VIDEO CALL -->
       <button
         type="button"
         class="call-icon-button video-call-button"
         (click)="startCall()"
-        [disabled]="isStartingCall || !activeTargetUserId"
+        [disabled]="
+          isStartingCall ||
+          !activeTargetUserId
+        "
         aria-label="Video call"
         title="Video call">
 
@@ -261,17 +254,19 @@
 
   </header>
 
-  <!-- =================================================
-       MESSAGES
-       ================================================= -->
-
+  <!-- =====================================================
+       MESSAGE STREAM
+       ===================================================== -->
   <div
     class="message-stream"
     #scrollContainer
     (scroll)="onMessageScroll($event)">
 
     <div
-      *ngFor="let msg of (chatService.activeMessages$ | async)"
+      *ngFor="
+        let msg of
+          (chatService.activeMessages$ | async)
+      "
       class="message-bubble-wrapper"
 
       [class.sent]="
@@ -309,41 +304,11 @@
               msg.senderUserId.toLowerCase() ===
               currentUserId.toLowerCase()
             "
-            class="message-status"
-
-            [class.status-sending]="
-              msg.status === 'sending'
-            "
-
-            [class.status-sent]="
-              msg.status === 'sent'
-            "
-
-            [class.status-delivered]="
-              msg.status === 'delivered'
-            "
-
-            [class.status-read]="
-              msg.status === 'read'
-            "
-
-            [attr.title]="
-              msg.status === 'sending'
-                ? 'Sending'
-                : msg.status === 'sent'
-                ? 'Sent'
-                : msg.status === 'delivered'
-                ? 'Delivered'
-                : msg.status === 'read'
-                ? 'Read'
-                : ''
-            ">
+            class="message-status">
 
             <ng-container
               *ngIf="msg.status === 'sending'">
-
               ⏳
-
             </ng-container>
 
             <ng-container
@@ -351,23 +316,17 @@
                 msg.status === 'sent' ||
                 !msg.status
               ">
-
               ✓
-
             </ng-container>
 
             <ng-container
               *ngIf="msg.status === 'delivered'">
-
               ✓✓
-
             </ng-container>
 
             <ng-container
               *ngIf="msg.status === 'read'">
-
               ✓✓
-
             </ng-container>
 
           </span>
@@ -377,8 +336,6 @@
       </div>
 
     </div>
-
-    <!-- NO MESSAGES -->
 
     <div
       *ngIf="
@@ -395,10 +352,7 @@
 
   </div>
 
-  <!-- =================================================
-       MESSAGE INPUT
-       ================================================= -->
-
+  <!-- MESSAGE INPUT -->
   <footer class="chat-input-area">
 
     <form
@@ -436,10 +390,7 @@
 
 </ng-container>
 
-<!-- ===================================================
-     NO ACTIVE CHAT
-     =================================================== -->
-
+<!-- NO ACTIVE CHAT -->
 <ng-template #noChat>
 
   <div class="no-active-chat">
@@ -465,10 +416,16 @@
 
 </ng-template>
 
-</main> <!-- ===================================================== INCOMING CALL ===================================================== --> <div *ngIf=" incomingCallUserId && !(isCallActive$ | async) " class="incoming-call-overlay">
+</main> <!-- ========================================================= INCOMING CALL ========================================================= --> <div *ngIf=" incomingCallUserId && !(isCallActive$ | async) " class="incoming-call-overlay">
 <div class="incoming-call-card">
 
-  <div class="incoming-avatar">
+  <div
+    class="incoming-avatar"
+    [style.background-color]="
+      getAvatarColor(
+        incomingCallName || 'Unknown'
+      )
+    ">
 
     {{
       incomingCallName
@@ -478,7 +435,7 @@
 
   </div>
 
-  <h2>
+  <p class="incoming-call-label">
 
     {{
       incomingCallType === 'voice'
@@ -486,12 +443,46 @@
         : 'Incoming Video Call'
     }}
 
+  </p>
+
+  <h2 class="incoming-caller-name">
+    {{ incomingCallName || 'Unknown caller' }}
   </h2>
 
-  <p>
+  <div class="incoming-call-type">
+
+    <span
+      *ngIf="incomingCallType === 'voice'"
+      class="call-type-icon">
+
+      📞
+
+    </span>
+
+    <span
+      *ngIf="incomingCallType === 'video'"
+      class="call-type-icon">
+
+      🎥
+
+    </span>
+
+    <span>
+
+      {{
+        incomingCallType === 'voice'
+          ? 'Voice call'
+          : 'Video call'
+      }}
+
+    </span>
+
+  </div>
+
+  <p class="incoming-call-message">
 
     <strong>
-      {{ incomingCallName || 'Unknown user' }}
+      {{ incomingCallName || 'Someone' }}
     </strong>
 
     is calling you...
@@ -554,67 +545,130 @@
 
 </div>
 
-</div> <!-- ===================================================== ACTIVE VOICE CALL ===================================================== --> <section *ngIf=" (isCallActive$ | async) && callType === 'voice' " class="fullscreen-call voice-call-screen">
+</div> <!-- ========================================================= ACTIVE VOICE CALL ========================================================= --> <section *ngIf=" (isCallActive$ | async) && activeCallType === 'voice' " class="fullscreen-call voice-call-screen">
+<!-- AUDIO -->
 <audio
   #remoteAudio
   autoplay
   playsinline>
 </audio>
 
+<!-- VOICE CALL USER AREA -->
 <div class="voice-call-content">
 
+  <!-- USER ICON / AVATAR -->
   <div
     class="voice-call-avatar"
     [style.background-color]="
-      getAvatarColor(activeTargetName)
+      getAvatarColor(
+        activeTargetName || 'User'
+      )
     ">
 
-    {{
-      activeTargetName
-        ? activeTargetName.charAt(0).toUpperCase()
-        : '?'
-    }}
+    <span
+      *ngIf="activeTargetName">
+
+      {{ activeTargetName.charAt(0).toUpperCase() }}
+
+    </span>
+
+    <span
+      *ngIf="!activeTargetName"
+      class="default-user-icon">
+
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true">
+
+        <circle
+          cx="12"
+          cy="8"
+          r="4">
+        </circle>
+
+        <path
+          d="M4 21
+             c0-4.2 3.6-7 8-7
+             s8 2.8 8 7">
+        </path>
+
+      </svg>
+
+    </span>
 
   </div>
 
+  <!-- USER NAME -->
   <h2>
     {{ activeTargetName || 'Voice Call' }}
   </h2>
 
+  <!-- CALL STATUS -->
   <p class="call-status">
-    {{ callStatus || 'Connected' }}
+
+    {{
+      callStatus ||
+      'Connected'
+    }}
+
   </p>
+
+  <!-- =====================================================
+       CALL TIMER
+       ===================================================== -->
+  <div
+    *ngIf="
+      callStatus === 'Connected' ||
+      callStatus === 'connected'
+    "
+    class="call-duration">
+
+    <span
+      class="timer-icon"
+      aria-hidden="true">
+
+      ⏱
+
+    </span>
+
+    <span>
+      {{ callDuration }}
+    </span>
+
+  </div>
 
 </div>
 
-<!-- =================================================
-     MODERN VOICE CALL CONTROLS
-     ================================================= -->
-
+<!-- =====================================================
+     VOICE CALL CONTROLS
+     ===================================================== -->
 <div class="call-controls modern-call-controls">
 
   <!-- MUTE / UNMUTE -->
-
   <button
     type="button"
     class="call-control-button mute-control"
     [class.active-control]="isMicrophoneMuted"
+
     [attr.aria-label]="
       isMicrophoneMuted
         ? 'Unmute microphone'
         : 'Mute microphone'
     "
+
     [attr.title]="
       isMicrophoneMuted
         ? 'Unmute microphone'
         : 'Mute microphone'
     "
+
     (click)="toggleMicrophone()">
 
     <span
       class="control-icon"
       aria-hidden="true">
 
+      <!-- MICROPHONE ON -->
       <svg
         *ngIf="!isMicrophoneMuted"
         viewBox="0 0 24 24">
@@ -623,16 +677,19 @@
           d="M12 14
              a3 3 0 0 0 3-3V6
              a3 3 0 0 0-6 0v5
-             a3 3 0 0 0 3 3z" />
+             a3 3 0 0 0 3 3z">
+        </path>
 
         <path
           d="M19 11
              a7 7 0 0 1-14 0
              M12 18v4
-             M8 22h8" />
+             M8 22h8">
+        </path>
 
       </svg>
 
+      <!-- MICROPHONE OFF -->
       <svg
         *ngIf="isMicrophoneMuted"
         viewBox="0 0 24 24">
@@ -641,7 +698,8 @@
           d="M9 9v2
              a3 3 0 0 0 5.12 2.12
              M15 9V6
-             a3 3 0 0 0-5.12-2.12" />
+             a3 3 0 0 0-5.12-2.12">
+        </path>
 
         <path
           d="M5 5l14 14
@@ -650,7 +708,8 @@
              M5 11
              a7 7 0 0 0 7 7
              M12 18v4
-             M8 22h8" />
+             M8 22h8">
+        </path>
 
       </svg>
 
@@ -669,7 +728,6 @@
   </button>
 
   <!-- DISCONNECT -->
-
   <button
     type="button"
     class="disconnect-button"
@@ -689,14 +747,15 @@
              a15.05 15.05 0 0 0 6.59 6.59
              l2.2-2.2
              a1 1 0 0 1 1.02-.24
-             11.36 11.36 0 0 0 3.57.57
+             11.36 11.36 0 0 1 3.57.57
              1 1 0 0 1 1 1v3.49
              a1 1 0 0 1-1 1
              C10.61 21 3 13.39 3 4
              a1 1 0 0 1 1-1h3.5
              a1 1 0 0 1 1 1
-             11.36 11.36 0 0 0 .57 3.57
-             1 1 0 0 1-.25 1.02z" />
+             11.36 11.36 0 0 1 .57 3.57
+             1 1 0 0 1-.25 1.02z">
+        </path>
 
       </svg>
 
@@ -710,9 +769,7 @@
 
 </div>
 
-</section> <!-- ===================================================== ACTIVE VIDEO CALL ===================================================== --> <section *ngIf=" (isCallActive$ | async) && callType === 'video' " class="fullscreen-call video-call-screen">
-<!-- REMOTE VIDEO -->
-
+</section> <!-- ========================================================= ACTIVE VIDEO CALL ========================================================= --> <section *ngIf=" (isCallActive$ | async) && activeCallType === 'video' " class="fullscreen-call video-call-screen">
 <video
   #remoteVideo
   class="remote-video"
@@ -721,7 +778,6 @@
 </video>
 
 <!-- REMOTE VIDEO PLACEHOLDER -->
-
 <div
   *ngIf="!remoteStream"
   class="remote-video-placeholder">
@@ -741,13 +797,15 @@
   </h2>
 
   <p>
-    {{ callStatus || 'Connecting...' }}
+    {{
+      callStatus ||
+      'Connecting...'
+    }}
   </p>
 
 </div>
 
 <!-- REMOTE USER INFO -->
-
 <div class="remote-user-info">
 
   <div class="remote-user-avatar">
@@ -767,7 +825,34 @@
     </strong>
 
     <span>
-      {{ callStatus || 'Connected' }}
+      {{
+        callStatus ||
+        'Connected'
+      }}
+    </span>
+
+    <!-- =================================================
+         VIDEO CALL TIMER
+         ================================================= -->
+    <span
+      *ngIf="
+        callStatus === 'Connected' ||
+        callStatus === 'connected'
+      "
+      class="call-duration">
+
+      <span
+        class="timer-icon"
+        aria-hidden="true">
+
+        ⏱
+
+      </span>
+
+      <span>
+        {{ callDuration }}
+      </span>
+
     </span>
 
   </div>
@@ -775,7 +860,6 @@
 </div>
 
 <!-- LOCAL VIDEO -->
-
 <div class="local-video-wrapper">
 
   <video
@@ -792,28 +876,21 @@
 
 </div>
 
-<!-- =================================================
-     MODERN VIDEO CALL CONTROLS
-     ================================================= -->
-
+<!-- VIDEO CALL CONTROLS -->
 <div class="call-controls modern-call-controls">
 
-  <!-- MUTE / UNMUTE -->
-
+  <!-- MUTE -->
   <button
     type="button"
     class="call-control-button mute-control"
     [class.active-control]="isMicrophoneMuted"
+
     [attr.aria-label]="
       isMicrophoneMuted
         ? 'Unmute microphone'
         : 'Mute microphone'
     "
-    [attr.title]="
-      isMicrophoneMuted
-        ? 'Unmute microphone'
-        : 'Mute microphone'
-    "
+
     (click)="toggleMicrophone()">
 
     <span
@@ -821,7 +898,6 @@
       aria-hidden="true">
 
       <!-- MICROPHONE ON -->
-
       <svg
         *ngIf="!isMicrophoneMuted"
         viewBox="0 0 24 24">
@@ -840,8 +916,7 @@
 
       </svg>
 
-      <!-- MICROPHONE MUTED -->
-
+      <!-- MICROPHONE OFF -->
       <svg
         *ngIf="isMicrophoneMuted"
         viewBox="0 0 24 24">
@@ -877,22 +952,18 @@
 
   </button>
 
-  <!-- CAMERA ON / OFF -->
-
+  <!-- CAMERA -->
   <button
     type="button"
     class="call-control-button camera-control"
     [class.active-control]="isCameraOff"
+
     [attr.aria-label]="
       isCameraOff
         ? 'Turn camera on'
         : 'Turn camera off'
     "
-    [attr.title]="
-      isCameraOff
-        ? 'Turn camera on'
-        : 'Turn camera off'
-    "
+
     (click)="toggleCamera()">
 
     <span
@@ -900,7 +971,6 @@
       aria-hidden="true">
 
       <!-- CAMERA ON -->
-
       <svg
         *ngIf="!isCameraOff"
         viewBox="0 0 24 24">
@@ -919,7 +989,6 @@
       </svg>
 
       <!-- CAMERA OFF -->
-
       <svg
         *ngIf="isCameraOff"
         viewBox="0 0 24 24">
@@ -953,7 +1022,6 @@
   </button>
 
   <!-- DISCONNECT -->
-
   <button
     type="button"
     class="disconnect-button"
@@ -979,7 +1047,7 @@
              C10.61 21 3 13.39 3 4
              a1 1 0 0 1 1-1h3.5
              a1 1 0 0 1 1 1
-             11.36 11.36 0 0 0 .57 3.57
+             11.36 11.36 0 0 1 .57 3.57
              1 1 0 0 1-.25 1.02z" />
 
       </svg>
@@ -991,6 +1059,128 @@
     </span>
 
   </button>
+
+</div>
+
+</section> <!-- ========================================================= OUTGOING CALL SCREEN ========================================================= --> <section *ngIf=" showOutgoingCallScreen && !(isCallActive$ | async) " class="fullscreen-call outgoing-call-screen">
+<div class="outgoing-call-content">
+
+  <div
+    class="outgoing-call-avatar"
+    [style.background-color]="
+      getAvatarColor(
+        outgoingCallName ||
+        activeTargetName ||
+        'User'
+      )
+    ">
+
+    {{
+      outgoingCallName ||
+      activeTargetName
+        ? (
+            outgoingCallName ||
+            activeTargetName
+          ).charAt(0).toUpperCase()
+        : '?'
+    }}
+
+  </div>
+
+  <h1>
+    {{
+      outgoingCallName ||
+      activeTargetName ||
+      'Calling...'
+    }}
+  </h1>
+
+  <div class="outgoing-call-type">
+
+    <span
+      *ngIf="callType === 'voice'"
+      class="outgoing-call-icon">
+
+      📞
+
+    </span>
+
+    <span
+      *ngIf="callType === 'video'"
+      class="outgoing-call-icon">
+
+      🎥
+
+    </span>
+
+    <span>
+
+      {{
+        callType === 'video'
+          ? 'Video call'
+          : 'Voice call'
+      }}
+
+    </span>
+
+  </div>
+
+  <p class="outgoing-call-status">
+
+    {{
+      callerCallStatus ||
+      callStatus ||
+      'Calling...'
+    }}
+
+  </p>
+
+  <div class="ringing-indicator">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+
+</div>
+
+<div class="outgoing-call-controls">
+
+  <button
+    type="button"
+    class="outgoing-end-button"
+    (click)="endCall()"
+    aria-label="Cancel call"
+    title="Cancel call">
+
+    <span class="outgoing-end-icon">
+
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true">
+
+        <path
+          d="M6.62 10.79
+             a15.05 15.05 0 0 0 6.59 6.59
+             l2.2-2.2
+             a1 1 0 0 1 1.02-.24
+             11.36 11.36 0 0 1 3.57.57
+             1 1 0 0 1 1 1v3.49
+             a1 1 0 0 1-1 1
+             C10.61 21 3 13.39 3 4
+             a1 1 0 0 1 1-1h3.5
+             a1 1 0 0 1 1 1
+             11.36 11.36 0 0 1 .57 3.57
+             1 1 0 0 1-.25 1.02z" />
+
+      </svg>
+
+    </span>
+
+  </button>
+
+  <span class="outgoing-end-label">
+    Cancel
+  </span>
 
 </div>
 

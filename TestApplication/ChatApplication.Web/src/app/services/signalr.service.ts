@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
+
 import {
   BehaviorSubject,
   Observable,
@@ -58,6 +59,21 @@ export interface MessageStatusChangedEvent {
   deliveredAtUtc?: string | null;
 
   readAtUtc?: string | null;
+
+}
+
+
+// =========================================================
+// INCOMING CALL EVENT
+// =========================================================
+
+export interface IncomingCallEvent {
+
+  senderId: string;
+
+  callerName: string;
+
+  callType: string;
 
 }
 
@@ -147,6 +163,18 @@ export class SignalRService {
 
 
   // =========================================================
+  // INCOMING CALL
+  // =========================================================
+
+  private incomingCallSubject =
+    new Subject<IncomingCallEvent>();
+
+  public incomingCall$:
+    Observable<IncomingCallEvent> =
+    this.incomingCallSubject.asObservable();
+
+
+  // =========================================================
   // START CONNECTION
   // =========================================================
 
@@ -173,7 +201,10 @@ export class SignalRService {
     }
 
 
-    // Already connected
+    // =======================================================
+    // ALREADY CONNECTED
+    // =======================================================
+
     if (
       this.hubConnection &&
       this.hubConnection.state ===
@@ -185,7 +216,10 @@ export class SignalRService {
     }
 
 
-    // Already connecting
+    // =======================================================
+    // ALREADY CONNECTING
+    // =======================================================
+
     if (this.connectionPromise) {
 
       return this.connectionPromise;
@@ -254,7 +288,6 @@ export class SignalRService {
               'SignalR Connection Started Successfully'
             );
 
-
             await this.loadOnlineUsers();
 
           }
@@ -268,10 +301,8 @@ export class SignalRService {
               error
             );
 
-
             this.hubConnection =
               null;
-
 
             throw error;
 
@@ -289,6 +320,7 @@ export class SignalRService {
 
 
     return this.connectionPromise;
+
   }
 
 
@@ -364,6 +396,80 @@ export class SignalRService {
 
         this.messageReceivedSubject.next(
           normalizedMessage
+        );
+
+      }
+    );
+
+
+    // =======================================================
+    // INCOMING CALL
+    // =======================================================
+
+    this.hubConnection.on(
+      'IncomingCall',
+      (data: any) => {
+
+        console.log(
+          'Incoming call received:',
+          data
+        );
+
+
+        const senderId =
+          data?.senderId ??
+          data?.SenderId ??
+          '';
+
+
+        const callerName =
+          data?.callerName ??
+          data?.CallerName ??
+          '';
+
+
+        const callType =
+          data?.callType ??
+          data?.CallType ??
+          '';
+
+
+        if (!senderId) {
+
+          console.warn(
+            'Invalid IncomingCall event:',
+            data
+          );
+
+          return;
+
+        }
+
+
+        const event:
+          IncomingCallEvent = {
+
+          senderId:
+            String(senderId),
+
+          callerName:
+            callerName ||
+            'Unknown caller',
+
+          callType:
+            String(callType)
+
+        };
+
+
+        console.log(
+          'Normalized IncomingCall event:',
+          event
+        );
+
+
+        this.incomingCallSubject.next(
+          event
         );
 
       }
@@ -737,6 +843,66 @@ export class SignalRService {
       'SendMessage',
       receiverUserId,
       message
+    );
+
+  }
+
+
+  // =========================================================
+  // RING USER
+  // =========================================================
+
+  public async ringUser(
+    targetUserId: string,
+    callerName: string,
+    callType: string
+  ): Promise<void> {
+
+    if (!targetUserId) {
+
+      throw new Error(
+        'Target user ID is required.'
+      );
+
+    }
+
+
+    if (!callerName?.trim()) {
+
+      throw new Error(
+        'Caller name is required.'
+      );
+
+    }
+
+
+    if (!callType?.trim()) {
+
+      throw new Error(
+        'Call type is required.'
+      );
+
+    }
+
+
+    this.ensureConnection();
+
+
+    console.log(
+      'Ringing user:',
+      {
+        targetUserId,
+        callerName,
+        callType
+      }
+    );
+
+
+    await this.hubConnection!.invoke(
+      'RingUser',
+      targetUserId,
+      callerName,
+      callType
     );
 
   }
