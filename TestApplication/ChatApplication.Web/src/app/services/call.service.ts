@@ -5,6 +5,12 @@ import { HUB_URL } from '../app.config';
 
 export type CallType = 'voice' | 'video';
 
+interface IncomingCallPayload {
+  senderId: string;
+  callerName: string;
+  callType?: CallType;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -16,39 +22,39 @@ export class CallService {
 
   private connection: signalR.HubConnection;
 
-  private readonly apiUrl =
-    `${HUB_URL}/chatHub`;
+  private readonly apiUrl = `${HUB_URL}/chatHub`;
 
 
   // =========================================================
   // WEBRTC
   // =========================================================
 
-  private peerConnection:
-    RTCPeerConnection | null = null;
+  private peerConnection: RTCPeerConnection | null = null;
 
-  private localStream:
-    MediaStream | null = null;
+  private localStream: MediaStream | null = null;
 
-  private remoteStream:
-    MediaStream | null = null;
+  private remoteStream: MediaStream | null = null;
 
-  private ringtone:
-    HTMLAudioElement | null = null;
+  private ringtone: HTMLAudioElement | null = null;
 
-  private pendingIceCandidates:
-    RTCIceCandidateInit[] = [];
+  private pendingIceCandidates: RTCIceCandidateInit[] = [];
 
 
   // =========================================================
-  // ACTIVE CALL
+  // CALL STATE
   // =========================================================
 
-  private activeCallUserId:
-    string | null = null;
+  private activeCallUserId: string | null = null;
 
-  private currentCallType:
-    CallType | null = null;
+  private currentCallType: CallType | null = null;
+
+  private isOutgoingRinging = false;
+
+  private isCallAccepted = false;
+
+  private hasWebRtcConnected = false;
+
+  private isEndingCall = false;
 
 
   // =========================================================
@@ -107,7 +113,6 @@ export class CallService {
 
     this.connection =
       new signalR.HubConnectionBuilder()
-
         .withUrl(
           this.apiUrl,
           {
@@ -115,9 +120,7 @@ export class CallService {
               localStorage.getItem('token') || ''
           }
         )
-
         .withAutomaticReconnect()
-
         .build();
 
     this.registerSignalRHandlers();
@@ -154,7 +157,7 @@ export class CallService {
       );
 
       setTimeout(() => {
-        this.startConnection();
+        void this.startConnection();
       }, 5000);
     }
   }
@@ -202,9 +205,7 @@ export class CallService {
     callType: CallType
   ): Promise<MediaStream> {
 
-    const audioConstraints:
-      MediaTrackConstraints = {
-
+    const audioConstraints: MediaTrackConstraints = {
       echoCancellation: true,
       noiseSuppression: true,
       autoGainControl: true
@@ -222,20 +223,15 @@ export class CallService {
       );
 
       const stream =
-        await navigator.mediaDevices
-          .getUserMedia({
-
-            audio: audioConstraints,
-            video: false
-
-          });
+        await navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+          video: false
+        });
 
       stream
         .getAudioTracks()
         .forEach(track => {
-
           track.enabled = true;
-
         });
 
       return stream;
@@ -253,41 +249,29 @@ export class CallService {
     try {
 
       const stream =
-        await navigator.mediaDevices
-          .getUserMedia({
-
-            audio: audioConstraints,
-
-            video: {
-
-              width: {
-                ideal: 1280
-              },
-
-              height: {
-                ideal: 720
-              },
-
-              facingMode: 'user'
-
-            }
-
-          });
+        await navigator.mediaDevices.getUserMedia({
+          audio: audioConstraints,
+          video: {
+            width: {
+              ideal: 1280
+            },
+            height: {
+              ideal: 720
+            },
+            facingMode: 'user'
+          }
+        });
 
       stream
         .getAudioTracks()
         .forEach(track => {
-
           track.enabled = true;
-
         });
 
       stream
         .getVideoTracks()
         .forEach(track => {
-
           track.enabled = true;
-
         });
 
       return stream;
@@ -325,24 +309,24 @@ export class CallService {
     // -------------------------------------------------------
 
     if (this.peerConnection) {
-
       this.cleanupWebRTC(false);
     }
 
 
-    this.currentCallType =
-      callType;
+    this.currentCallType = callType;
+
+    this.hasWebRtcConnected = false;
 
 
     // -------------------------------------------------------
     // Remote stream
     // -------------------------------------------------------
 
-    this.remoteStream =
-      new MediaStream();
+    this.remoteStream = new MediaStream();
 
-    this.remoteStream$
-      .next(this.remoteStream);
+    this.remoteStream$.next(
+      this.remoteStream
+    );
 
 
     // -------------------------------------------------------
@@ -351,26 +335,20 @@ export class CallService {
 
     this.peerConnection =
       new RTCPeerConnection({
-
         iceServers: [
-
           {
             urls:
               'stun:stun.l.google.com:19302'
           },
-
           {
             urls:
               'stun:stun1.l.google.com:19302'
           },
-
           {
             urls:
               'stun:stun2.l.google.com:19302'
           }
-
         ]
-
       });
 
 
@@ -378,8 +356,7 @@ export class CallService {
     // CONNECTION STATE
     // =======================================================
 
-    this.peerConnection
-      .onconnectionstatechange =
+    this.peerConnection.onconnectionstatechange =
       () => {
 
         if (!this.peerConnection) {
@@ -387,14 +364,27 @@ export class CallService {
         }
 
         const state =
-          this.peerConnection
-            .connectionState;
+          this.peerConnection.connectionState;
 
         console.log(
           '📡 WebRTC connection state:',
-          state
+          state,
+          {
+            ringing:
+              this.isOutgoingRinging,
+
+            accepted:
+              this.isCallAccepted,
+
+            connected:
+              this.hasWebRtcConnected
+          }
         );
 
+
+        // ---------------------------------------------------
+        // CONNECTED
+        // ---------------------------------------------------
 
         if (state === 'connected') {
 
@@ -402,18 +392,56 @@ export class CallService {
             '✅ WebRTC connected'
           );
 
-          this.isCallActive$
-            .next(true);
+          this.hasWebRtcConnected = true;
+
+          this.isCallAccepted = true;
+
+          this.isOutgoingRinging = false;
+
+          this.isCallActive$.next(true);
+
+          return;
         }
 
+
+        // ---------------------------------------------------
+        // DISCONNECTED
+        // ---------------------------------------------------
 
         if (state === 'disconnected') {
 
           console.warn(
             '⚠️ WebRTC disconnected'
           );
+
+          if (
+            this.isOutgoingRinging &&
+            !this.isCallAccepted
+          ) {
+
+            console.log(
+              '⏳ Still ringing. Ignoring WebRTC disconnected state.'
+            );
+
+            return;
+          }
+
+          if (this.hasWebRtcConnected) {
+
+            console.warn(
+              '📴 Connected call disconnected.'
+            );
+
+            void this.endCall();
+          }
+
+          return;
         }
 
+
+        // ---------------------------------------------------
+        // FAILED
+        // ---------------------------------------------------
 
         if (state === 'failed') {
 
@@ -421,9 +449,37 @@ export class CallService {
             '❌ WebRTC failed'
           );
 
-          this.endCall();
+          if (
+            this.isOutgoingRinging &&
+            !this.isCallAccepted
+          ) {
+
+            console.warn(
+              '⏳ WebRTC failed while ringing. Keeping call alive.'
+            );
+
+            return;
+          }
+
+          if (
+            this.hasWebRtcConnected ||
+            this.isCallAccepted
+          ) {
+
+            console.error(
+              '❌ Active call WebRTC failed. Ending call.'
+            );
+
+            void this.endCall();
+          }
+
+          return;
         }
 
+
+        // ---------------------------------------------------
+        // CLOSED
+        // ---------------------------------------------------
 
         if (state === 'closed') {
 
@@ -438,19 +494,46 @@ export class CallService {
     // ICE CONNECTION STATE
     // =======================================================
 
-    this.peerConnection
-      .oniceconnectionstatechange =
+    this.peerConnection.oniceconnectionstatechange =
       () => {
 
         if (!this.peerConnection) {
           return;
         }
 
+        const state =
+          this.peerConnection.iceConnectionState;
+
         console.log(
           '🧊 ICE connection state:',
-          this.peerConnection
-            .iceConnectionState
+          state
         );
+
+        if (
+          state === 'failed' &&
+          this.isOutgoingRinging &&
+          !this.isCallAccepted
+        ) {
+
+          console.warn(
+            '⏳ ICE failed while ringing. Ignoring.'
+          );
+
+          return;
+        }
+
+        if (
+          state === 'disconnected' &&
+          this.isOutgoingRinging &&
+          !this.isCallAccepted
+        ) {
+
+          console.warn(
+            '⏳ ICE disconnected while ringing. Ignoring.'
+          );
+
+          return;
+        }
       };
 
 
@@ -458,8 +541,7 @@ export class CallService {
     // ICE GATHERING STATE
     // =======================================================
 
-    this.peerConnection
-      .onicegatheringstatechange =
+    this.peerConnection.onicegatheringstatechange =
       () => {
 
         if (!this.peerConnection) {
@@ -468,8 +550,7 @@ export class CallService {
 
         console.log(
           '🧊 ICE gathering:',
-          this.peerConnection
-            .iceGatheringState
+          this.peerConnection.iceGatheringState
         );
       };
 
@@ -483,8 +564,9 @@ export class CallService {
         callType
       );
 
-    this.localStream$
-      .next(this.localStream);
+    this.localStream$.next(
+      this.localStream
+    );
 
 
     // -------------------------------------------------------
@@ -500,11 +582,10 @@ export class CallService {
           track.kind
         );
 
-        this.peerConnection!
-          .addTrack(
-            track,
-            this.localStream!
-          );
+        this.peerConnection!.addTrack(
+          track,
+          this.localStream!
+        );
       });
 
 
@@ -520,16 +601,15 @@ export class CallService {
           event.track.kind
         );
 
-
         if (!this.remoteStream) {
 
           this.remoteStream =
             new MediaStream();
 
-          this.remoteStream$
-            .next(this.remoteStream);
+          this.remoteStream$.next(
+            this.remoteStream
+          );
         }
-
 
         const exists =
           this.remoteStream
@@ -540,13 +620,11 @@ export class CallService {
                 event.track.id
             );
 
-
         if (!exists) {
 
-          this.remoteStream
-            .addTrack(
-              event.track
-            );
+          this.remoteStream.addTrack(
+            event.track
+          );
 
           console.log(
             '➕ Remote track added:',
@@ -554,11 +632,9 @@ export class CallService {
           );
         }
 
-
-        this.remoteStream$
-          .next(
-            this.remoteStream
-          );
+        this.remoteStream$.next(
+          this.remoteStream
+        );
       };
 
 
@@ -578,19 +654,15 @@ export class CallService {
           return;
         }
 
-
         console.log(
           '🧊 Local ICE candidate generated'
         );
-
 
         try {
 
           await this.safeInvoke(
             'SendIceCandidate',
-
             targetUserId,
-
             JSON.stringify(
               event.candidate
             )
@@ -618,24 +690,19 @@ export class CallService {
       !this.peerConnection ||
       !this.peerConnection.remoteDescription
     ) {
-
       return;
     }
-
 
     if (
       this.pendingIceCandidates.length === 0
     ) {
-
       return;
     }
-
 
     console.log(
       '🧊 Processing queued ICE candidates:',
       this.pendingIceCandidates.length
     );
-
 
     while (
       this.pendingIceCandidates.length > 0
@@ -644,20 +711,15 @@ export class CallService {
       const candidate =
         this.pendingIceCandidates.shift();
 
-
       if (!candidate) {
         continue;
       }
 
-
       try {
 
-        await this.peerConnection
-          .addIceCandidate(
-            new RTCIceCandidate(
-              candidate
-            )
-          );
+        await this.peerConnection.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
 
       } catch (error) {
 
@@ -682,51 +744,67 @@ export class CallService {
 
     this.connection.on(
       'IncomingCall',
-
       (
-        fromUserId: string,
-        firstName: string,
-        lastName: string,
-        callType?: CallType
+        call: IncomingCallPayload
       ) => {
 
         console.log(
           '📞 Incoming call:',
-          fromUserId,
-          callType
+          call
         );
 
-
-        if (!fromUserId) {
+        if (!call) {
           return;
         }
 
+        const fromUserId =
+          call.senderId;
+
+        if (!fromUserId) {
+
+          console.error(
+            '❌ Incoming call has no senderId.'
+          );
+
+          return;
+        }
 
         const callerName =
-          `${firstName || ''} ${lastName || ''}`
-            .trim() ||
+          call.callerName ||
           'Unknown user';
+
+        const callType: CallType =
+          call.callType === 'voice'
+            ? 'voice'
+            : 'video';
 
 
         this.activeCallUserId =
           fromUserId;
 
+        this.currentCallType =
+          callType;
 
-        this.incomingCall$
-          .next(fromUserId);
+        this.isOutgoingRinging =
+          false;
 
+        this.isCallAccepted =
+          false;
 
-        this.incomingCallName$
-          .next(callerName);
+        this.hasWebRtcConnected =
+          false;
 
+        this.incomingCall$.next(
+          fromUserId
+        );
 
-        this.incomingCallType$
-          .next(
-            callType === 'voice'
-              ? 'voice'
-              : 'video'
-          );
+        this.incomingCallName$.next(
+          callerName
+        );
 
+        this.incomingCallType$.next(
+          callType
+        );
 
         this.playRingtone();
       }
@@ -739,30 +817,29 @@ export class CallService {
 
     this.connection.on(
       'CallAccepted',
-
-      async (fromUserId: string) => {
+      async (
+        fromUserId: string
+      ) => {
 
         console.log(
           '✅ Call accepted:',
           fromUserId
         );
 
-
         this.activeCallUserId =
           fromUserId;
 
+        this.isOutgoingRinging =
+          false;
 
-        this.callAccepted$
-          .next(fromUserId);
+        this.isCallAccepted =
+          true;
 
+        this.callAccepted$.next(
+          fromUserId
+        );
 
         this.stopRingtone();
-
-
-        // ---------------------------------------------------
-        // IMPORTANT:
-        // Create/send offer ONLY after acceptance.
-        // ---------------------------------------------------
 
         try {
 
@@ -775,33 +852,23 @@ export class CallService {
             return;
           }
 
-
           console.log(
             '📨 Creating offer after acceptance...'
           );
 
-
           const offer =
-            await this.peerConnection
-              .createOffer();
+            await this.peerConnection.createOffer();
 
-
-          await this.peerConnection
-            .setLocalDescription(
-              offer
-            );
+          await this.peerConnection.setLocalDescription(
+            offer
+          );
 
 
           await this.safeInvoke(
             'SendOffer',
-
             fromUserId,
-
-            JSON.stringify(
-              offer
-            )
+            JSON.stringify(offer)
           );
-
 
           console.log(
             '📨 Offer sent after acceptance'
@@ -816,8 +883,7 @@ export class CallService {
 
           this.cleanupWebRTC();
 
-          this.isCallActive$
-            .next(false);
+          this.isCallActive$.next(false);
         }
       }
     );
@@ -829,7 +895,6 @@ export class CallService {
 
     this.connection.on(
       'ReceiveOffer',
-
       async (
         fromUserId: string,
         sdpOffer: string
@@ -840,47 +905,29 @@ export class CallService {
           fromUserId
         );
 
-
         try {
 
           this.activeCallUserId =
             fromUserId;
 
+          this.isOutgoingRinging =
+            false;
+
+          this.isCallAccepted =
+            true;
 
           const offer =
-            JSON.parse(
-              sdpOffer
-            );
-
-
-          // --------------------------------------------------
-          // Determine voice/video
-          // --------------------------------------------------
-
-          const callType:
-            CallType =
-            offer.sdp?.includes(
-              'm=video'
-            )
-              ? 'video'
-              : 'voice';
-
-
-          this.currentCallType =
-            callType;
-
-
-          console.log(
-            '📞 Incoming media type:',
-            callType
-          );
-
-
-          // --------------------------------------------------
-          // Create receiver peer connection
-          // --------------------------------------------------
+            JSON.parse(sdpOffer);
 
           if (!this.peerConnection) {
+
+            const callType: CallType =
+              offer.sdp?.includes('m=video')
+                ? 'video'
+                : 'voice';
+
+            this.currentCallType =
+              callType;
 
             await this.createPeerConnection(
               fromUserId,
@@ -888,74 +935,38 @@ export class CallService {
             );
           }
 
-
-          // --------------------------------------------------
-          // Set remote offer
-          // --------------------------------------------------
-
           await this.peerConnection!
             .setRemoteDescription(
-              new RTCSessionDescription(
-                offer
-              )
+              new RTCSessionDescription(offer)
             );
-
 
           console.log(
             '✅ Remote offer applied'
           );
 
-
-          // --------------------------------------------------
-          // Process ICE received before offer
-          // --------------------------------------------------
-
           await this.processPendingIceCandidates();
 
-
-          // --------------------------------------------------
-          // Create answer
-          // --------------------------------------------------
-
           const answer =
-            await this.peerConnection!
-              .createAnswer();
-
+            await this.peerConnection!.createAnswer();
 
           await this.peerConnection!
-            .setLocalDescription(
-              answer
-            );
-
+            .setLocalDescription(answer);
 
           console.log(
             '📨 Sending answer...'
           );
 
-
-          // --------------------------------------------------
-          // Send answer
-          // --------------------------------------------------
-
           await this.safeInvoke(
             'SendAnswer',
-
             fromUserId,
-
-            JSON.stringify(
-              answer
-            )
+            JSON.stringify(answer)
           );
-
 
           console.log(
             '✅ Answer sent'
           );
 
-
-          this.isCallActive$
-            .next(true);
-
+          this.isCallActive$.next(true);
 
           this.stopRingtone();
 
@@ -970,8 +981,7 @@ export class CallService {
 
           this.cleanupWebRTC();
 
-          this.isCallActive$
-            .next(false);
+          this.isCallActive$.next(false);
         }
       }
     );
@@ -983,7 +993,6 @@ export class CallService {
 
     this.connection.on(
       'ReceiveAnswer',
-
       async (
         fromUserId: string,
         sdpAnswer: string
@@ -993,7 +1002,6 @@ export class CallService {
           '📨 Answer received:',
           fromUserId
         );
-
 
         try {
 
@@ -1006,25 +1014,17 @@ export class CallService {
             return;
           }
 
-
           const answer =
-            JSON.parse(
-              sdpAnswer
-            );
-
+            JSON.parse(sdpAnswer);
 
           await this.peerConnection
             .setRemoteDescription(
-              new RTCSessionDescription(
-                answer
-              )
+              new RTCSessionDescription(answer)
             );
-
 
           console.log(
             '✅ Remote answer applied'
           );
-
 
           await this.processPendingIceCandidates();
 
@@ -1045,7 +1045,6 @@ export class CallService {
 
     this.connection.on(
       'ReceiveIceCandidate',
-
       async (
         fromUserId: string,
         candidateString: string
@@ -1056,37 +1055,24 @@ export class CallService {
           fromUserId
         );
 
-
         if (!candidateString) {
           return;
         }
-
 
         try {
 
           const candidate:
             RTCIceCandidateInit =
-            JSON.parse(
-              candidateString
-            );
-
-
-          // --------------------------------------------------
-          // Remote description already exists
-          // --------------------------------------------------
+            JSON.parse(candidateString);
 
           if (
             this.peerConnection &&
             this.peerConnection.remoteDescription
           ) {
 
-            await this.peerConnection
-              .addIceCandidate(
-                new RTCIceCandidate(
-                  candidate
-                )
-              );
-
+            await this.peerConnection.addIceCandidate(
+              new RTCIceCandidate(candidate)
+            );
 
             console.log(
               '🧊 ICE candidate added'
@@ -1094,17 +1080,13 @@ export class CallService {
 
           } else {
 
-            // ------------------------------------------------
-            // Offer/answer has not arrived yet.
-            // Queue candidate.
-            // ------------------------------------------------
-
             console.log(
               '🧊 Queueing ICE candidate'
             );
 
-            this.pendingIceCandidates
-              .push(candidate);
+            this.pendingIceCandidates.push(
+              candidate
+            );
           }
 
         } catch (error) {
@@ -1124,22 +1106,27 @@ export class CallService {
 
     this.connection.on(
       'CallRejected',
-
-      (fromUserId: string) => {
+      (
+        fromUserId: string
+      ) => {
 
         console.log(
           '❌ Call rejected:',
           fromUserId
         );
 
+        this.isOutgoingRinging =
+          false;
 
-        this.callRejected$
-          .next(fromUserId);
+        this.isCallAccepted =
+          false;
 
+        this.callRejected$.next(
+          fromUserId
+        );
 
         this.activeCallUserId =
           null;
-
 
         this.cleanupWebRTC();
 
@@ -1156,22 +1143,30 @@ export class CallService {
 
     this.connection.on(
       'CallEnded',
-
-      (fromUserId: string) => {
+      (
+        fromUserId: string
+      ) => {
 
         console.log(
           '📴 Call ended:',
           fromUserId
         );
 
+        this.isOutgoingRinging =
+          false;
 
-        this.callEnded$
-          .next(fromUserId);
+        this.isCallAccepted =
+          false;
 
+        this.hasWebRtcConnected =
+          false;
+
+        this.callEnded$.next(
+          fromUserId
+        );
 
         this.activeCallUserId =
           null;
-
 
         this.cleanupWebRTC();
 
@@ -1184,16 +1179,26 @@ export class CallService {
 
 
   // =========================================================
-  // START VIDEO CALL
+  // START CALL
   // =========================================================
 
   public async startCall(
     targetUserId: string
+  ): Promise<void>;
+
+  public async startCall(
+    targetUserId: string,
+    callType: CallType
+  ): Promise<void>;
+
+  public async startCall(
+    targetUserId: string,
+    callType: CallType = 'video'
   ): Promise<void> {
 
     return this.startCallInternal(
       targetUserId,
-      'video'
+      callType
     );
   }
 
@@ -1229,11 +1234,11 @@ export class CallService {
       );
     }
 
-
     if (
       this.isCallActive$.value ||
       this.peerConnection ||
-      this.incomingCall$.value
+      this.incomingCall$.value ||
+      this.isOutgoingRinging
     ) {
 
       console.warn(
@@ -1243,21 +1248,29 @@ export class CallService {
       return;
     }
 
-
     this.activeCallUserId =
       targetUserId;
 
     this.currentCallType =
       callType;
 
+    this.isOutgoingRinging =
+      true;
+
+    this.isCallAccepted =
+      false;
+
+    this.hasWebRtcConnected =
+      false;
+
+    this.isEndingCall =
+      false;
+
 
     try {
 
       // -----------------------------------------------------
-      // Create local WebRTC connection/media.
-      //
-      // We prepare the connection while the other user
-      // is ringing, but DO NOT create/send the offer yet.
+      // Create WebRTC connection
       // -----------------------------------------------------
 
       await this.createPeerConnection(
@@ -1267,47 +1280,61 @@ export class CallService {
 
 
       // -----------------------------------------------------
-      // Ring receiver
+      // Get caller name
       // -----------------------------------------------------
 
-      try {
-
-        await this.safeInvoke(
-          'RingUser',
-          targetUserId,
-          callType
-        );
-
-      } catch (error) {
-
-        console.warn(
-          'RingUser with call type failed. Retrying old signature.',
-          error
-        );
-
-
-        await this.safeInvoke(
-          'RingUser',
-          targetUserId
-        );
-      }
-
+      const callerName =
+        this.getCurrentUserName();
 
       console.log(
-        '🔔 Receiver is ringing'
+        '📞 Calling user:',
+        targetUserId
+      );
+
+      console.log(
+        '👤 Caller name:',
+        callerName
+      );
+
+      console.log(
+        '📱 Call type:',
+        callType
       );
 
 
       // -----------------------------------------------------
+      // Ring receiver
+      //
       // IMPORTANT:
       //
-      // Do NOT create the offer here.
+      // RingUser requires 3 parameters:
       //
-      // CallAccepted handler creates and sends the offer.
+      // 1. targetUserId
+      // 2. callerName
+      // 3. callType
       // -----------------------------------------------------
 
-      this.isCallActive$
-        .next(false);
+      await this.safeInvoke(
+        'RingUser',
+        targetUserId,
+        callerName,
+        callType
+      );
+
+
+      console.log(
+        '🔔 Receiver is ringing:',
+        targetUserId,
+        callerName,
+        callType
+      );
+
+
+      // -----------------------------------------------------
+      // Call is not active until WebRTC connects
+      // -----------------------------------------------------
+
+      this.isCallActive$.next(false);
 
     } catch (error) {
 
@@ -1316,19 +1343,107 @@ export class CallService {
         error
       );
 
+      this.isOutgoingRinging =
+        false;
+
+      this.isCallAccepted =
+        false;
+
+      this.hasWebRtcConnected =
+        false;
 
       this.activeCallUserId =
         null;
 
-
       this.currentCallType =
         null;
-
 
       this.cleanupWebRTC();
 
       throw error;
     }
+  }
+
+
+  // =========================================================
+  // GET CURRENT USER NAME
+  // =========================================================
+
+  private getCurrentUserName(): string {
+
+    const directName =
+      localStorage.getItem('userName') ||
+      localStorage.getItem('username') ||
+      localStorage.getItem('name');
+
+    if (directName?.trim()) {
+
+      return directName.trim();
+    }
+
+    const userJson =
+      localStorage.getItem('user');
+
+    if (userJson) {
+
+      try {
+
+        const user =
+          JSON.parse(userJson);
+
+        if (
+          user?.fullName &&
+          String(user.fullName).trim()
+        ) {
+
+          return String(
+            user.fullName
+          ).trim();
+        }
+
+        const fullName =
+          [
+            user?.firstName,
+            user?.lastName
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+
+        if (fullName) {
+          return fullName;
+        }
+
+        if (
+          user?.username &&
+          String(user.username).trim()
+        ) {
+
+          return String(
+            user.username
+          ).trim();
+        }
+
+        if (
+          user?.name &&
+          String(user.name).trim()
+        ) {
+
+          return String(
+            user.name
+          ).trim();
+        }
+
+      } catch (error) {
+
+        console.warn(
+          '⚠️ Could not parse localStorage user:',
+          error
+        );
+      }
+    }
+
+    return 'Unknown user';
   }
 
 
@@ -1347,10 +1462,17 @@ export class CallService {
       );
     }
 
-
     this.activeCallUserId =
       fromUserId;
 
+    this.isOutgoingRinging =
+      false;
+
+    this.isCallAccepted =
+      true;
+
+    this.isEndingCall =
+      false;
 
     try {
 
@@ -1359,17 +1481,14 @@ export class CallService {
         fromUserId
       );
 
-
       await this.safeInvoke(
         'AcceptCall',
         fromUserId
       );
 
-
       this.stopRingtone();
 
       this.clearIncomingCall();
-
 
       console.log(
         '✅ Call accepted'
@@ -1381,6 +1500,9 @@ export class CallService {
         '❌ Failed to accept call:',
         error
       );
+
+      this.isCallAccepted =
+        false;
 
       throw error;
     }
@@ -1399,7 +1521,6 @@ export class CallService {
       return;
     }
 
-
     try {
 
       await this.safeInvoke(
@@ -1415,13 +1536,20 @@ export class CallService {
       );
     }
 
+    this.isOutgoingRinging =
+      false;
+
+    this.isCallAccepted =
+      false;
+
+    this.hasWebRtcConnected =
+      false;
 
     this.activeCallUserId =
       null;
 
     this.currentCallType =
       null;
-
 
     this.cleanupWebRTC();
 
@@ -1439,44 +1567,65 @@ export class CallService {
     notifyServer: boolean = true
   ): Promise<void> {
 
+    if (this.isEndingCall) {
+      return;
+    }
+
+    this.isEndingCall =
+      true;
+
     const targetUserId =
       this.activeCallUserId;
 
+    try {
 
-    if (
-      notifyServer &&
-      targetUserId
-    ) {
+      if (
+        notifyServer &&
+        targetUserId
+      ) {
 
-      try {
+        try {
 
-        await this.safeInvoke(
-          'EndCall',
-          targetUserId
-        );
+          await this.safeInvoke(
+            'EndCall',
+            targetUserId
+          );
 
-      } catch (error) {
+        } catch (error) {
 
-        console.error(
-          '❌ Failed to notify call end:',
-          error
-        );
+          console.error(
+            '❌ Failed to notify call end:',
+            error
+          );
+        }
       }
+
+    } finally {
+
+      this.isOutgoingRinging =
+        false;
+
+      this.isCallAccepted =
+        false;
+
+      this.hasWebRtcConnected =
+        false;
+
+      this.activeCallUserId =
+        null;
+
+      this.currentCallType =
+        null;
+
+      this.cleanupWebRTC();
+
+      this.stopRingtone();
+
+      this.clearIncomingCall();
+
+      this.isEndingCall =
+        false;
     }
-
-
-    this.activeCallUserId =
-      null;
-
-    this.currentCallType =
-      null;
-
-
-    this.cleanupWebRTC();
-
-    this.stopRingtone();
-
-    this.clearIncomingCall();
   }
 
 
@@ -1490,32 +1639,27 @@ export class CallService {
       return false;
     }
 
-
     const tracks =
-      this.localStream
-        .getAudioTracks();
-
+      this.localStream.getAudioTracks();
 
     if (!tracks.length) {
       return false;
     }
 
-
     const newEnabled =
       !tracks[0].enabled;
 
-
     tracks.forEach(track => {
-
-      track.enabled =
-        newEnabled;
-
+      track.enabled = newEnabled;
     });
-
 
     return newEnabled;
   }
 
+
+  // =========================================================
+  // MICROPHONE STATE
+  // =========================================================
 
   public isMicrophoneEnabled(): boolean {
 
@@ -1523,11 +1667,8 @@ export class CallService {
       return false;
     }
 
-
     const track =
-      this.localStream
-        .getAudioTracks()[0];
-
+      this.localStream.getAudioTracks()[0];
 
     return !!track?.enabled;
   }
@@ -1543,32 +1684,27 @@ export class CallService {
       return false;
     }
 
-
     const tracks =
-      this.localStream
-        .getVideoTracks();
-
+      this.localStream.getVideoTracks();
 
     if (!tracks.length) {
       return false;
     }
 
-
     const newEnabled =
       !tracks[0].enabled;
 
-
     tracks.forEach(track => {
-
-      track.enabled =
-        newEnabled;
-
+      track.enabled = newEnabled;
     });
-
 
     return newEnabled;
   }
 
+
+  // =========================================================
+  // CAMERA STATE
+  // =========================================================
 
   public isCameraEnabled(): boolean {
 
@@ -1576,11 +1712,8 @@ export class CallService {
       return false;
     }
 
-
     const track =
-      this.localStream
-        .getVideoTracks()[0];
-
+      this.localStream.getVideoTracks()[0];
 
     return !!track?.enabled;
   }
@@ -1590,7 +1723,8 @@ export class CallService {
   // CURRENT CALL TYPE
   // =========================================================
 
-  public getCallType(): CallType | null {
+  public getCallType():
+    CallType | null {
 
     return this.currentCallType;
   }
@@ -1602,14 +1736,11 @@ export class CallService {
 
   private clearIncomingCall(): void {
 
-    this.incomingCall$
-      .next(null);
+    this.incomingCall$.next(null);
 
-    this.incomingCallName$
-      .next('');
+    this.incomingCallName$.next('');
 
-    this.incomingCallType$
-      .next(null);
+    this.incomingCallType$.next(null);
   }
 
 
@@ -1624,11 +1755,6 @@ export class CallService {
     console.log(
       '🧹 Cleaning WebRTC'
     );
-
-
-    // -------------------------------------------------------
-    // Peer connection
-    // -------------------------------------------------------
 
     if (this.peerConnection) {
 
@@ -1647,24 +1773,16 @@ export class CallService {
       this.peerConnection.onicegatheringstatechange =
         null;
 
-
       try {
-
         this.peerConnection.close();
-
       } catch {
         // Ignore
       }
-
 
       this.peerConnection =
         null;
     }
 
-
-    // -------------------------------------------------------
-    // Local tracks
-    // -------------------------------------------------------
 
     if (this.localStream) {
 
@@ -1672,19 +1790,18 @@ export class CallService {
         .getTracks()
         .forEach(track => {
 
-          track.stop();
+          try {
+            track.stop();
+          } catch {
+            // Ignore
+          }
 
         });
-
 
       this.localStream =
         null;
     }
 
-
-    // -------------------------------------------------------
-    // Remote tracks
-    // -------------------------------------------------------
 
     if (this.remoteStream) {
 
@@ -1692,43 +1809,29 @@ export class CallService {
         .getTracks()
         .forEach(track => {
 
-          track.stop();
+          try {
+            track.stop();
+          } catch {
+            // Ignore
+          }
 
         });
-
 
       this.remoteStream =
         null;
     }
 
 
-    // -------------------------------------------------------
-    // Subjects
-    // -------------------------------------------------------
+    this.localStream$.next(null);
 
-    this.localStream$
-      .next(null);
+    this.remoteStream$.next(null);
 
-    this.remoteStream$
-      .next(null);
+    this.pendingIceCandidates = [];
 
-
-    // -------------------------------------------------------
-    // ICE
-    // -------------------------------------------------------
-
-    this.pendingIceCandidates =
-      [];
-
-
-    // -------------------------------------------------------
-    // UI
-    // -------------------------------------------------------
 
     if (updateCallState) {
 
-      this.isCallActive$
-        .next(false);
+      this.isCallActive$.next(false);
     }
   }
 
@@ -1741,16 +1844,13 @@ export class CallService {
 
     this.stopRingtone();
 
-
     this.ringtone =
       new Audio(
         'assets/ringtone.mp3'
       );
 
-
     this.ringtone.loop =
       true;
-
 
     this.ringtone
       .play()
@@ -1773,7 +1873,6 @@ export class CallService {
     if (!this.ringtone) {
       return;
     }
-
 
     this.ringtone.pause();
 

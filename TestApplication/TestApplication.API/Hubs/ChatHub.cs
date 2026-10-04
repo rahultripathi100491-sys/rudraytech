@@ -274,13 +274,38 @@ namespace TestApplication.API.Hubs
                     candidate
                 );
 
-        public async Task RingUser(
-            string targetUserId) =>
+        //public async Task RingUser(
+        //    string targetUserId) =>
+        //    await Clients.User(targetUserId)
+        //        .SendAsync(
+        //            "IncomingCall",
+        //            Context.UserIdentifier
+        //        );
+
+        //public async Task RingUser(string targetUserId, string callerName) =>
+        //    await Clients.User(targetUserId)
+        //        .SendAsync(
+        //            "IncomingCall",
+        //            new
+        //            {
+        //                senderId = Context.UserIdentifier,
+        //                callerName = callerName
+        //            }
+        //        );
+
+        public async Task RingUser(string targetUserId, string callerName, string callType)
+        {
             await Clients.User(targetUserId)
                 .SendAsync(
                     "IncomingCall",
-                    Context.UserIdentifier
+                    new
+                    {
+                        senderId = Context.UserIdentifier,
+                        callerName = callerName,
+                        callType = callType
+                    }
                 );
+        }
 
         public async Task AcceptCall(
             string targetUserId) =>
